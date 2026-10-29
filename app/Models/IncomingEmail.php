@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
@@ -36,6 +37,28 @@ class IncomingEmail extends Model implements HasMedia
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(EmailEvent::class)->orderBy('id');
+    }
+
+    /** @return array<int, string> */
+    public function anomalies(): array
+    {
+        return \App\Services\Mail\EmailAnomalies::for($this);
+    }
+
+    /** @return array{label: string, color: string} */
+    public function outcome(): array
+    {
+        return \App\Services\Mail\EmailAnomalies::outcome($this);
+    }
+
+    public function scopeWithAnomalies($query)
+    {
+        return \App\Services\Mail\EmailAnomalies::scope($query);
     }
 
     public function mailAccount(): BelongsTo

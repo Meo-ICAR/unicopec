@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\EmailCategory;
 use App\Models\IncomingEmail;
-use App\Services\Bpm\BpmEvents;
+use App\Services\Mail\EmailPipeline;
 use App\Services\Mail\EmailRouter;
 use Illuminate\Console\Command;
 
@@ -17,7 +17,7 @@ class RouteMailCommand extends Command
 
     protected $description = 'Assegna le email classificate al referente giusto dell\'organigramma e comunica a UnicoBPM l\'evento email.assegnata';
 
-    public function handle(EmailRouter $router): int
+    public function handle(EmailRouter $router, EmailPipeline $pipeline): int
     {
         $routable = collect(EmailCategory::cases())->filter->isRoutable()->map->value->all();
 
@@ -34,6 +34,7 @@ class RouteMailCommand extends Command
 
             if (! $found) {
                 $missing++;
+                $pipeline->noReferent($email, $category);
                 $this->warn("#{$email->id} {$category->value}: nessun referente trovato.");
 
                 continue;
@@ -45,8 +46,7 @@ class RouteMailCommand extends Command
                 continue;
             }
 
-            $email->forceFill(['related_type' => 'employee', 'related_id' => $found['employee']->id])->save();
-            BpmEvents::dispatchAssigned($email, $found['employee'], $found['role']);
+            $pipeline->routed($email, $found);
             $assigned++;
         }
 

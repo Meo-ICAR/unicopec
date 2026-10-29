@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Enums\EmailCategory;
 use App\Models\IncomingEmail;
-use App\Services\Bpm\BpmEvents;
 use App\Services\Mail\EmailClassifier;
+use App\Services\Mail\EmailPipeline;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -18,7 +18,7 @@ class ClassifyMailCommand extends Command
 
     protected $description = 'Classifica le email non ancora classificate (regole certe, poi AI) e comunica a UnicoBPM l\'evento email.ricevuta';
 
-    public function handle(EmailClassifier $classifier): int
+    public function handle(EmailClassifier $classifier, EmailPipeline $pipeline): int
     {
         $emails = IncomingEmail::query()->with(['company', 'mailAccount'])
             ->when(! $this->option('reclassify'), fn ($q) => $q->whereNull('classification'))
@@ -45,8 +45,7 @@ class ClassifyMailCommand extends Command
                 continue;
             }
 
-            $email->forceFill(['classification' => $result->category->value])->save();
-            BpmEvents::dispatchReceived($email, $result);
+            $pipeline->classified($email, $result);
             $done++;
         }
 

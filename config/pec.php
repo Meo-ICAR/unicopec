@@ -7,6 +7,12 @@ return [
      */
     'org_fallback_company_id' => (int) env('PEC_ORG_FALLBACK_COMPANY_ID', 1),
 
+    'forward' => [
+        // Se l'organigramma è quello di ripiego (simulazione) gli inoltri non vanno ai referenti veri ma a questo indirizzo di prova.
+        // Vuoto = l'inoltro viene solo registrato come «simulato».
+        'simulation_to' => env('PEC_FORWARD_SIMULATION_TO', ''),
+    ],
+
     'ai' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5-5'),

@@ -49,7 +49,7 @@ class BpmEvents
             return;
         }
 
-        SendBpmEvent::dispatch(self::received($email, $classification));
+        SendBpmEvent::dispatch(self::received($email, $classification), $email->id);
     }
 
     public static function dispatchAssigned(IncomingEmail $email, Employee $employee, string $role): void
@@ -58,7 +58,7 @@ class BpmEvents
             return;
         }
 
-        SendBpmEvent::dispatch(self::assigned($email, $employee, $role));
+        SendBpmEvent::dispatch(self::assigned($email, $employee, $role), $email->id);
     }
 
     private static function skips(IncomingEmail $email): bool
