@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\IncomingEmail;
 use App\Models\MailAccount;
-use App\Services\Bpm\BpmEvents;
 use App\Services\Mail\PecEnvelope;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -133,8 +132,7 @@ class FetchMailCommand extends Command
             $this->storeAttachments($envelopeData['attachments'], $email);
             $imported++;
 
-            // Gli allegati sono già salvati: UnicoBPM vede il numero giusto e decide quali processi avviare.
-            BpmEvents::dispatchReceived($email);
+            // L'evento per UnicoBPM parte dopo la classificazione (mail:classify), così porta già categoria e sintesi.
         }
 
         if (! $this->option('dry-run')) {

@@ -9,4 +9,12 @@ return [
         'description' => 'Legge le caselle attive e importa le nuove email/PEC (apre la busta PEC).',
         'options' => ['days', 'limit'],
     ],
+    'mail:classify' => [
+        'description' => 'Classifica le email nuove (regole certe, poi AI) e comunica l\'evento email.ricevuta.',
+        'options' => ['limit'],
+    ],
+    'mail:route' => [
+        'description' => 'Assegna le email classificate al referente dell\'organigramma e comunica l\'evento email.assegnata.',
+        'options' => ['limit'],
+    ],
 ];
