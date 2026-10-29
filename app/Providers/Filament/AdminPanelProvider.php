@@ -2,6 +2,8 @@
 
 namespace App\Providers\Filament;
 
+use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
+use DutchCodingCompany\FilamentSocialite\Provider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -28,6 +30,11 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('UnicoPEC')
+            ->brandLogo(asset('images/unicopec-logo.png'))
+            ->darkModeBrandLogo(asset('images/unicopec-logo-dark.png'))
+            ->brandLogoHeight('3rem')
+            ->favicon(asset('images/unicopec-icon.png'))
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -52,6 +59,23 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            ->plugin(
+                FilamentSocialitePlugin::make()
+                    ->providers([
+                        Provider::make('microsoft')
+                            ->label('Microsoft')
+                            ->icon('fab-microsoft')
+                            ->color(Color::hex('#0078D4'))
+                            ->outlined(false)
+                            ->stateless(false),
+                        Provider::make('google')
+                            ->label('Google')
+                            ->icon('fab-google')
+                            ->color(Color::hex('#4285F4'))
+                            ->outlined(false)
+                            ->stateless(false),
+                    ])
+            )
             ->authMiddleware([
                 Authenticate::class,
             ]);

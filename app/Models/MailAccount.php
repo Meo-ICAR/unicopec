@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /** Casella email o PEC: IMAP in ingresso, SMTP in uscita. */
@@ -13,6 +14,11 @@ class MailAccount extends Model
     protected $guarded = ['id'];
 
     protected $hidden = ['imap_password', 'smtp_password', 'access_token', 'refresh_token'];
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     protected function casts(): array
     {

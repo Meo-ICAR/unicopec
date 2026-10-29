@@ -33,6 +33,11 @@ class IncomingEmail extends Model implements HasMedia
         $this->addMediaCollection(self::ATTACHMENTS);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function mailAccount(): BelongsTo
     {
         return $this->belongsTo(MailAccount::class);
