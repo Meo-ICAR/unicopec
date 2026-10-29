@@ -38,6 +38,7 @@ class MailAccountsTable
             ])
             ->recordActions([
                 self::connectMicrosoftAction(),
+                self::adminConsentLinkAction(),
                 Action::make('test')
                     ->label('Prova connessione')
                     ->icon('heroicon-o-signal')
@@ -68,5 +69,22 @@ class MailAccountsTable
             ->color('info')
             ->visible(fn (MailAccount $record) => $record->provider === 'microsoft' || str_contains((string) $record->imap_host, 'office365') || str_contains((string) $record->imap_host, 'outlook'))
             ->url(fn (MailAccount $record) => route('mail-oauth.microsoft.redirect', $record));
+    }
+
+    /** Mostra il link di consenso da inviare all'amministratore del tenant Microsoft 365 che ospita la casella. */
+    public static function adminConsentLinkAction(): Action
+    {
+        return Action::make('link_consenso_admin')
+            ->label('Link consenso amministratore')
+            ->icon('heroicon-o-shield-check')
+            ->color('gray')
+            ->visible(fn (MailAccount $record) => $record->provider === 'microsoft' || str_contains((string) $record->imap_host, 'office365') || str_contains((string) $record->imap_host, 'outlook'))
+            ->action(function (): void {
+                $url = app(\App\Services\Mail\MicrosoftMailOAuth::class)->adminConsentUrl();
+
+                Notification::make()->info()->persistent()->title('Link per l\'amministratore del tenant Microsoft 365')
+                    ->body(new \Illuminate\Support\HtmlString('Invia questo indirizzo a un amministratore globale del tenant che ospita la casella: approvando, l\'app UnicoPEC può collegare le caselle.<br><br><a href="'.e($url).'" target="_blank" style="word-break:break-all;text-decoration:underline">'.e($url).'</a>'))
+                    ->send();
+            });
     }
 }

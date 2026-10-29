@@ -35,6 +35,20 @@ class MicrosoftMailOAuth
         ]);
     }
 
+    /**
+     * Link da inviare all'amministratore del tenant che ospita la casella: approva l'app per tutto il tenant (consenso amministratore),
+     * così la casella si collega anche se l'app è registrata in un altro tenant. Ritorna alla stessa pagina di ritorno, che mostra solo l'esito.
+     */
+    public function adminConsentUrl(): string
+    {
+        return "https://login.microsoftonline.com/{$this->tenant()}/v2.0/adminconsent?".http_build_query([
+            'client_id' => $this->clientId(),
+            'scope' => 'https://outlook.office.com/IMAP.AccessAsUser.All offline_access',
+            'redirect_uri' => self::redirectUri(),
+            'state' => 'admin-consent',
+        ]);
+    }
+
     public static function newState(): string
     {
         return Str::random(40);

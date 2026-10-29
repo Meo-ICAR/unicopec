@@ -15,6 +15,7 @@ class EditMailAccount extends EditRecord
     {
         return [
             MailAccountsTable::connectMicrosoftAction(),
+            MailAccountsTable::adminConsentLinkAction(),
             DeleteAction::make(),
         ];
     }
