@@ -24,7 +24,7 @@ class MicrosoftMailOAuth
     public function authorizationUrl(MailAccount $account, string $state): string
     {
         return "https://login.microsoftonline.com/{$this->tenant()}/oauth2/v2.0/authorize?".http_build_query([
-            'client_id' => config('services.microsoft.client_id'),
+            'client_id' => $this->clientId(),
             'response_type' => 'code',
             'redirect_uri' => self::redirectUri(),
             'response_mode' => 'query',
@@ -44,8 +44,8 @@ class MicrosoftMailOAuth
     public function complete(MailAccount $account, string $code): void
     {
         $response = Http::asForm()->timeout(20)->post("https://login.microsoftonline.com/{$this->tenant()}/oauth2/v2.0/token", [
-            'client_id' => config('services.microsoft.client_id'),
-            'client_secret' => config('services.microsoft.client_secret'),
+            'client_id' => $this->clientId(),
+            'client_secret' => $this->clientSecret(),
             'grant_type' => 'authorization_code',
             'code' => $code,
             'redirect_uri' => self::redirectUri(),
@@ -86,5 +86,16 @@ class MicrosoftMailOAuth
     private function tenant(): string
     {
         return (string) (config('services.microsoft.mail_tenant') ?: config('services.microsoft.tenant') ?: 'common');
+    }
+
+    /** App registrata nel tenant che ospita le caselle (MICROSOFT_MAIL_CLIENT_ID); in mancanza, quella del login. */
+    private function clientId(): ?string
+    {
+        return config('services.microsoft.mail_client_id') ?: config('services.microsoft.client_id');
+    }
+
+    private function clientSecret(): ?string
+    {
+        return config('services.microsoft.mail_client_secret') ?: config('services.microsoft.client_secret');
     }
 }

@@ -50,10 +50,9 @@ class ImapClientFactory
             throw new RuntimeException("Casella #{$account->id}: il rinnovo del token è supportato solo per Microsoft.");
         }
 
-        $config = config('services.microsoft');
         $response = Http::asForm()->timeout(20)->post("https://login.microsoftonline.com/{$this->tenant()}/oauth2/v2.0/token", [
-            'client_id' => $config['client_id'],
-            'client_secret' => $config['client_secret'],
+            'client_id' => $this->clientId(),
+            'client_secret' => $this->clientSecret(),
             'grant_type' => 'refresh_token',
             'refresh_token' => $account->refresh_token,
             'scope' => MicrosoftMailOAuth::SCOPES,
@@ -73,5 +72,16 @@ class ImapClientFactory
     private function tenant(): string
     {
         return (string) (config('services.microsoft.mail_tenant') ?: config('services.microsoft.tenant') ?: 'common');
+    }
+
+    /** App registrata nel tenant che ospita le caselle (MICROSOFT_MAIL_CLIENT_ID); in mancanza, quella del login. */
+    private function clientId(): ?string
+    {
+        return config('services.microsoft.mail_client_id') ?: config('services.microsoft.client_id');
+    }
+
+    private function clientSecret(): ?string
+    {
+        return config('services.microsoft.mail_client_secret') ?: config('services.microsoft.client_secret');
     }
 }
