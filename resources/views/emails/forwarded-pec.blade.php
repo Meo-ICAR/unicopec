@@ -8,6 +8,17 @@
         <p style="margin:0 0 12px; padding:8px 12px; background:#fef3c7; border:1px solid #f59e0b;">{{ $banner }}</p>
     @endif
 
+    @if ($note)
+        <p style="margin:0 0 12px; padding:8px 12px; background:#eff6ff; border:1px solid #93c5fd;">{{ $note }}</p>
+    @endif
+
+    @if ($takeUrl)
+        <p style="margin:0 0 16px;">
+            <a href="{{ $takeUrl }}" style="display:inline-block; padding:10px 18px; background:#d97706; color:#fff; text-decoration:none; border-radius:6px; font-weight:bold;">Prendo in carico</a>
+            <br><span style="color:#6b7280; font-size:12px;">Se la stessa richiesta è stata inviata a più persone, vale chi la prende in carico per primo.</span>
+        </p>
+    @endif
+
     <table style="border-collapse: collapse; margin-bottom: 16px;">
         <tr><td style="padding:2px 12px 2px 0; color:#6b7280;">Da</td><td>{{ $email->from_name }} &lt;{{ $email->from_email }}&gt;</td></tr>
         <tr><td style="padding:2px 12px 2px 0; color:#6b7280;">Oggetto</td><td>{{ $email->subject }}</td></tr>

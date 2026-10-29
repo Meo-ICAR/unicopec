@@ -16,7 +16,7 @@ class ForwardedPec extends Mailable
 {
     private const MAX_ATTACHMENTS_BYTES = 15 * 1024 * 1024;
 
-    public function __construct(public IncomingEmail $email, public Employee $employee, public ?string $banner = null, public ?string $role = null) {}
+    public function __construct(public IncomingEmail $email, public Employee $employee, public ?string $banner = null, public ?string $role = null, public ?string $takeUrl = null, public ?string $note = null) {}
 
     public function envelope(): Envelope
     {
@@ -35,6 +35,8 @@ class ForwardedPec extends Mailable
             'email' => $this->email,
             'banner' => $this->banner,
             'role' => $this->role,
+            'takeUrl' => $this->takeUrl,
+            'note' => $this->note,
             'category' => EmailCategory::tryFrom((string) $this->email->classification)?->getLabel(),
             'bodyText' => trim((string) ($this->email->body_text ?: strip_tags((string) $this->email->body_html))),
             'attachmentsNote' => $media->isEmpty() ? 'nessuno' : ($tooBig

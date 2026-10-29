@@ -6,9 +6,9 @@ use App\Models\MailAccount;
 use App\Services\Mail\MicrosoftMailOAuth;
 use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 
 class MicrosoftMailOAuthController extends Controller
 {
@@ -40,7 +40,8 @@ class MicrosoftMailOAuthController extends Controller
         }
 
         $account = MailAccount::findOrFail($pending['account_id']);
-        $back = "/admin/mail-accounts/{$account->id}/edit";
+        abort_unless($request->user()->canAccessTenant($account->company), 403);
+        $back = "/admin/{$account->company_id}/mail-accounts/{$account->id}/edit";
 
         if ($request->query('error')) {
             Notification::make()->danger()->title('Collegamento annullato da Microsoft')->body(mb_substr((string) $request->query('error_description'), 0, 250))->persistent()->send();

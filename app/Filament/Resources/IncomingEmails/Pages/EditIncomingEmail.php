@@ -18,6 +18,8 @@ class EditIncomingEmail extends EditRecord
             IncomingEmailsTable::classifyAction(),
             IncomingEmailsTable::routeAction(),
             IncomingEmailsTable::forwardAction(),
+            IncomingEmailsTable::handoverAction(),
+            IncomingEmailsTable::takenAction(),
         ];
     }
 

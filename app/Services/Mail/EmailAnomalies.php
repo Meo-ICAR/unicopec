@@ -32,6 +32,7 @@ class EmailAnomalies
                 ->orWhere(fn ($q) => $q->whereIn('classification', $routable)->whereNotNull('related_id')->whereNotExists(
                     fn ($sub) => $sub->selectRaw('1')->from('employees')->whereColumn('employees.id', 'incoming_emails.related_id')->where('employees.is_active', true)->whereNotNull('employees.email')->where('employees.email', '!=', '')->whereNull('employees.deleted_at')
                 ))
+                ->orWhere(fn ($q) => $q->whereNotNull('awaiting_since')->whereNull('taken_at')->where('awaiting_since', '<', now()->subDay()))
                 ->orWhereExists(fn ($sub) => $sub->selectRaw('1')->from('email_events')->whereColumn('email_events.incoming_email_id', 'incoming_emails.id')->where('email_events.kind', EmailEvent::ANOMALY)->where('email_events.status', 'error'));
         });
     }
@@ -60,6 +61,10 @@ class EmailAnomalies
             }
         }
 
+        if ($email->awaiting_since && ! $email->taken_at && $email->awaiting_since->lt(now()->subDay())) {
+            $found[] = 'Inoltrata ma non ancora presa in carico (da oltre 24 ore)';
+        }
+
         foreach ($email->events->where('kind', EmailEvent::ANOMALY)->where('status', 'error') as $event) {
             $found[] = $event->message;
         }
@@ -74,6 +79,14 @@ class EmailAnomalies
 
         if ($email->classification === EmailCategory::ProviderNotification->value) {
             return ['label' => 'Ricevuta del gestore', 'color' => 'gray'];
+        }
+
+        if ($email->taken_at) {
+            return ['label' => 'Presa in carico da '.($email->takenBy?->name ?? '—'), 'color' => 'success'];
+        }
+
+        if ($email->awaiting_since) {
+            return ['label' => 'In attesa di presa in carico', 'color' => 'warning'];
         }
 
         if ($events->contains(fn ($e) => $e->kind === EmailEvent::BPM_EVENT && ($e->meta['started'] ?? 0) > 0)) {

@@ -6,6 +6,7 @@ use App\Enums\EmailCategory;
 use App\Models\EmailEvent;
 use App\Models\IncomingEmail;
 use App\Models\MailAccount;
+use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -15,15 +16,19 @@ class PecStatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $realMail = fn () => IncomingEmail::query()->where(fn ($q) => $q->whereNull('classification')->orWhere('classification', '!=', EmailCategory::ProviderNotification->value));
+        $tenantId = Filament::getTenant()?->getKey();
+        $emails = fn () => IncomingEmail::query()->when($tenantId, fn ($q) => $q->where('company_id', $tenantId));
+        $events = fn () => EmailEvent::query()->when($tenantId, fn ($q) => $q->whereIn('incoming_email_id', IncomingEmail::query()->where('company_id', $tenantId)->select('id')));
+
+        $realMail = fn () => $emails()->where(fn ($q) => $q->whereNull('classification')->orWhere('classification', '!=', EmailCategory::ProviderNotification->value));
         $routable = collect(EmailCategory::cases())->filter->isRoutable()->map->value->all();
 
-        $toRoute = IncomingEmail::query()->where(fn ($q) => $q->whereNull('classification')->orWhere(fn ($q) => $q->whereIn('classification', $routable)->whereNull('related_id')))->count();
-        $anomalies = IncomingEmail::query()->withAnomalies()->count();
-        $forwarded = EmailEvent::query()->where('kind', EmailEvent::FORWARDED)->where('status', 'ok')->where('created_at', '>=', now()->subDays(7))->count();
-        $simulated = EmailEvent::query()->where('kind', EmailEvent::FORWARDED)->where('status', 'warning')->where('created_at', '>=', now()->subDays(7))->count();
-        $processes = EmailEvent::query()->where('kind', EmailEvent::BPM_EVENT)->where('status', 'ok')->where('created_at', '>=', now()->subDays(7))->count();
-        $staleAccounts = MailAccount::query()->where('is_active', true)->where(fn ($q) => $q->whereNull('last_synced_at')->orWhere('last_synced_at', '<', now()->subDay()))->count();
+        $toRoute = $emails()->where(fn ($q) => $q->whereNull('classification')->orWhere(fn ($q) => $q->whereIn('classification', $routable)->whereNull('related_id')))->count();
+        $anomalies = $emails()->withAnomalies()->count();
+        $forwarded = $events()->where('kind', EmailEvent::FORWARDED)->where('status', 'ok')->where('created_at', '>=', now()->subDays(7))->count();
+        $simulated = $events()->where('kind', EmailEvent::FORWARDED)->where('status', 'warning')->where('created_at', '>=', now()->subDays(7))->count();
+        $processes = $events()->where('kind', EmailEvent::BPM_EVENT)->where('status', 'ok')->where('created_at', '>=', now()->subDays(7))->count();
+        $staleAccounts = MailAccount::query()->when($tenantId, fn ($q) => $q->where('company_id', $tenantId))->where('is_active', true)->where(fn ($q) => $q->whereNull('last_synced_at')->orWhere('last_synced_at', '<', now()->subDay()))->count();
 
         return [
             Stat::make('Ricevute oggi', $realMail()->whereDate('received_at', today())->count())->description('Ultimi 7 giorni: '.$realMail()->where('received_at', '>=', now()->subDays(7))->count())->icon('heroicon-o-inbox-arrow-down'),

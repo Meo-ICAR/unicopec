@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MailAccounts\Schemas;
 
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -32,7 +33,7 @@ class MailAccountForm
                         ->searchable()
                         ->preload()
                         ->required()
-                        ->visible($withCompany),
+                        ->visible($withCompany && ! Filament::hasTenancy()),
                     TextInput::make('email_address')
                         ->label('Indirizzo gestito')
                         ->email()

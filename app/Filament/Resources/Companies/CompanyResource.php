@@ -28,6 +28,9 @@ class CompanyResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    // L'anagrafica delle società è globale: non si filtra sulla società corrente.
+    protected static bool $isScopedToTenant = false;
+
     public static function form(Schema $schema): Schema
     {
         return CompanyForm::configure($schema);

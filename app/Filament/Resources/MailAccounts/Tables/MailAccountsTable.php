@@ -4,15 +4,18 @@ namespace App\Filament\Resources\MailAccounts\Tables;
 
 use App\Models\MailAccount;
 use App\Services\Mail\MailAccountTester;
+use App\Services\Mail\MicrosoftMailOAuth;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class MailAccountsTable
 {
@@ -21,7 +24,7 @@ class MailAccountsTable
         return $table
             ->columns([
                 TextColumn::make('name')->label('Etichetta')->sortable()->searchable(),
-                TextColumn::make('company.name')->label('Società')->sortable()->searchable()->visible($withCompany),
+                TextColumn::make('company.name')->label('Società')->sortable()->searchable()->visible($withCompany && ! Filament::hasTenancy()),
                 TextColumn::make('email_address')->label('Indirizzo')->searchable()->copyable(),
                 IconColumn::make('is_pec')->label('PEC')->boolean(),
                 TextColumn::make('auth_type')
@@ -34,7 +37,7 @@ class MailAccountsTable
                 IconColumn::make('is_active')->label('Attiva')->boolean(),
             ])
             ->filters([
-                SelectFilter::make('company_id')->label('Società')->relationship('company', 'name')->visible($withCompany),
+                SelectFilter::make('company_id')->label('Società')->relationship('company', 'name')->visible($withCompany && ! Filament::hasTenancy()),
             ])
             ->recordActions([
                 self::connectMicrosoftAction(),
@@ -80,10 +83,10 @@ class MailAccountsTable
             ->color('gray')
             ->visible(fn (MailAccount $record) => $record->provider === 'microsoft' || str_contains((string) $record->imap_host, 'office365') || str_contains((string) $record->imap_host, 'outlook'))
             ->action(function (): void {
-                $url = app(\App\Services\Mail\MicrosoftMailOAuth::class)->adminConsentUrl();
+                $url = app(MicrosoftMailOAuth::class)->adminConsentUrl();
 
                 Notification::make()->info()->persistent()->title('Link per l\'amministratore del tenant Microsoft 365')
-                    ->body(new \Illuminate\Support\HtmlString('Invia questo indirizzo a un amministratore globale del tenant che ospita la casella: approvando, l\'app UnicoPEC può collegare le caselle.<br><br><a href="'.e($url).'" target="_blank" style="word-break:break-all;text-decoration:underline">'.e($url).'</a>'))
+                    ->body(new HtmlString('Invia questo indirizzo a un amministratore globale del tenant che ospita la casella: approvando, l\'app UnicoPEC può collegare le caselle.<br><br><a href="'.e($url).'" target="_blank" style="word-break:break-all;text-decoration:underline">'.e($url).'</a>'))
                     ->send();
             });
     }

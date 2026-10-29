@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Mail\EmailAnomalies;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,8 @@ class IncomingEmail extends Model implements HasMedia
             'cc' => 'array',
             'received_at' => 'datetime',
             'is_read' => 'boolean',
+            'taken_at' => 'datetime',
+            'awaiting_since' => 'datetime',
         ];
     }
 
@@ -47,18 +50,23 @@ class IncomingEmail extends Model implements HasMedia
     /** @return array<int, string> */
     public function anomalies(): array
     {
-        return \App\Services\Mail\EmailAnomalies::for($this);
+        return EmailAnomalies::for($this);
     }
 
     /** @return array{label: string, color: string} */
     public function outcome(): array
     {
-        return \App\Services\Mail\EmailAnomalies::outcome($this);
+        return EmailAnomalies::outcome($this);
     }
 
     public function scopeWithAnomalies($query)
     {
-        return \App\Services\Mail\EmailAnomalies::scope($query);
+        return EmailAnomalies::scope($query);
+    }
+
+    public function takenBy(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'taken_by_id');
     }
 
     public function mailAccount(): BelongsTo

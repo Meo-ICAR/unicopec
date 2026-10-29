@@ -2,12 +2,17 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\RememberLastTenant;
+use App\Models\Company;
 use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
 use DutchCodingCompany\FilamentSocialite\Provider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -30,6 +35,20 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->tenant(Company::class)
+            // Dopo l'accesso si riparte dall'ultima società aperta.
+            ->homeUrl(fn () => ($id = auth()->user()?->last_company_id) ? url("/admin/{$id}") : url('/admin'))
+            ->tenantMenuItems([
+                'select' => MenuItem::make()->label('Cambia società')->icon('heroicon-o-building-office'),
+            ])
+            ->tenantMiddleware([RememberLastTenant::class], isPersistent: true)
+            ->navigationGroups([
+                NavigationGroup::make('Manuali')->collapsible()->collapsed(),
+            ])
+            ->navigationItems([
+                NavigationItem::make('Manuale utente')->group('Manuali')->icon('heroicon-o-book-open')->url(fn () => route('manuali.utente'))->openUrlInNewTab()->sort(1),
+                NavigationItem::make('Manuale tecnico')->group('Manuali')->icon('heroicon-o-code-bracket-square')->url(fn () => route('manuali.tecnico'))->openUrlInNewTab()->sort(2),
+            ])
             ->brandName('UnicoPEC')
             ->brandLogo(asset('images/unicopec-logo.png'))
             ->darkModeBrandLogo(asset('images/unicopec-logo-dark.png'))

@@ -18,6 +18,8 @@ class EmailEvent extends Model
 
     public const ANOMALY = 'anomaly';
 
+    public const TAKEN = 'taken';
+
     protected $guarded = ['id'];
 
     protected function casts(): array
