@@ -63,6 +63,11 @@ class IncomingEmailsTable
             ])
             ->defaultSort('received_at', 'desc')
             ->filters([
+                Filter::make('oggi')->label('Ricevute oggi')->query(fn (Builder $query) => $query->whereDate('received_at', today())->where(fn ($q) => $q->whereNull('classification')->orWhere('classification', '!=', EmailCategory::ProviderNotification->value))),
+                Filter::make('ultimi_7_giorni')->label('Ultimi 7 giorni')->query(fn (Builder $query) => $query->where('received_at', '>=', now()->subDays(7))->where(fn ($q) => $q->whereNull('classification')->orWhere('classification', '!=', EmailCategory::ProviderNotification->value))),
+                Filter::make('inoltrate_7g')->label('Inoltrate negli ultimi 7 giorni')->query(fn (Builder $query) => $query->whereHas('events', fn ($e) => $e->where('kind', EmailEvent::FORWARDED)->whereIn('status', ['ok', 'warning'])->where('created_at', '>=', now()->subDays(7)))),
+                Filter::make('bpm_7g')->label('Processo BPM avviato negli ultimi 7 giorni')->query(fn (Builder $query) => $query->whereHas('events', fn ($e) => $e->where('kind', EmailEvent::BPM_EVENT)->where('status', 'ok')->where('created_at', '>=', now()->subDays(7)))),
+                Filter::make('da_smistare')->label('Da smistare')->query(fn (Builder $query) => $query->where(fn ($q) => $q->whereNull('classification')->orWhere(fn ($q) => $q->whereIn('classification', collect(EmailCategory::cases())->filter->isRoutable()->map->value->all())->whereNull('related_id')))),
                 Filter::make('con_anomalie')->label('Con anomalie')->query(fn (Builder $query) => $query->withAnomalies()),
                 Filter::make('senza_referente')->label('Senza referente')->query(fn (Builder $query) => $query->whereNull('related_id')->whereNotIn('classification', [EmailCategory::ProviderNotification->value, EmailCategory::NonRilevante->value])),
                 Filter::make('da_classificare')->label('Da classificare')->query(fn (Builder $query) => $query->whereNull('classification')),

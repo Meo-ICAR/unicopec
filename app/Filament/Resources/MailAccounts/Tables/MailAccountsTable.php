@@ -13,6 +13,7 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
@@ -37,6 +38,7 @@ class MailAccountsTable
                 IconColumn::make('is_active')->label('Attiva')->boolean(),
             ])
             ->filters([
+                Filter::make('ferme')->label('Ferme (non lette da oltre 24 ore)')->query(fn ($query) => $query->where('is_active', true)->where(fn ($q) => $q->whereNull('last_synced_at')->orWhere('last_synced_at', '<', now()->subDay()))),
                 SelectFilter::make('company_id')->label('Società')->relationship('company', 'name')->visible($withCompany && ! Filament::hasTenancy()),
             ])
             ->recordActions([
