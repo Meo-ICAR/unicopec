@@ -12,18 +12,19 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, HasTenants
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -48,25 +49,31 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return $this->hasMany(SocialiteUser::class);
     }
 
-    public function companies(): BelongsToMany
+    public function company(): BelongsTo
     {
-        return $this->belongsToMany(Company::class)->withPivot('role')->withTimestamps();
+        return $this->belongsTo(Company::class);
     }
 
-    /** Gli amministratori vedono tutte le società; gli altri solo quelle a cui sono collegati. */
-    public function isAdmin(): bool
+    /** Admin e super admin possono modificare ed eliminare le email ricevute; gli altri solo consultarle e lavorarle (classifica, smista, inoltra). */
+    public function canManageEmails(): bool
     {
-        return $this->role === 'admin';
+        return in_array($this->role, ['admin', 'super_admin'], true);
+    }
+
+    /** Solo il super admin vede tutte le società; chiunque altro (anche un admin) vede solo quella di `users.company_id`. */
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
     }
 
     /** @return Collection<int, Company> */
     public function getTenants(Panel $panel): Collection
     {
-        return $this->isAdmin() ? Company::query()->orderBy('name')->get() : $this->companies()->orderBy('name')->get();
+        return $this->isSuperAdmin() ? Company::query()->orderBy('name')->get() : Company::query()->whereKey($this->company_id)->get();
     }
 
     public function canAccessTenant(Model $tenant): bool
     {
-        return $this->isAdmin() || $this->companies()->whereKey($tenant->getKey())->exists();
+        return $this->isSuperAdmin() || $this->company_id !== null && (int) $this->company_id === (int) $tenant->getKey();
     }
 }

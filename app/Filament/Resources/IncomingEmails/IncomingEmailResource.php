@@ -12,6 +12,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class IncomingEmailResource extends Resource
 {
@@ -30,6 +31,21 @@ class IncomingEmailResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return true; // la pagina si apre a tutti per consultare il registro; il form è modificabile solo da chi può gestire le email
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return (bool) auth()->user()?->canManageEmails();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return (bool) auth()->user()?->canManageEmails();
     }
 
     public static function form(Schema $schema): Schema

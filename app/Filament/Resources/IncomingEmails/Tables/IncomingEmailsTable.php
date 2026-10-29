@@ -12,6 +12,8 @@ use App\Services\Mail\EmailHandover;
 use App\Services\Mail\EmailPipeline;
 use App\Services\Mail\EmailRouter;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Radio;
@@ -70,6 +72,9 @@ class IncomingEmailsTable
                 SelectFilter::make('classification')->label('Classificazione')->options(EmailCategory::options()),
                 SelectFilter::make('company_id')->label('Società')->relationship('company', 'name')->visible(! Filament::hasTenancy()),
                 SelectFilter::make('mail_account_id')->label('Casella')->relationship('mailAccount', 'email_address'),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([DeleteBulkAction::make()]),
             ])
             ->recordActions([
                 self::classifyAction(),

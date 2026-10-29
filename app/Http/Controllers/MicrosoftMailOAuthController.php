@@ -41,7 +41,7 @@ class MicrosoftMailOAuthController extends Controller
 
         $account = MailAccount::findOrFail($pending['account_id']);
         abort_unless($request->user()->canAccessTenant($account->company), 403);
-        $back = "/admin/{$account->company_id}/mail-accounts/{$account->id}/edit";
+        $back = "/admin/{$account->company_id}/companies/{$account->company_id}/edit";
 
         if ($request->query('error')) {
             Notification::make()->danger()->title('Collegamento annullato da Microsoft')->body(mb_substr((string) $request->query('error_description'), 0, 250))->persistent()->send();

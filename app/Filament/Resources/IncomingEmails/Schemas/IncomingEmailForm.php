@@ -4,6 +4,8 @@ namespace App\Filament\Resources\IncomingEmails\Schemas;
 
 use App\Enums\EmailCategory;
 use App\Models\Employee;
+use App\Services\Mail\EmailRouter;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -15,7 +17,7 @@ class IncomingEmailForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->disabled(fn () => ! auth()->user()?->canManageEmails())->components([
             Section::make('Smistamento')
                 ->icon('heroicon-o-arrows-right-left')
                 ->description('Qui correggi la classificazione e il referente scelti automaticamente.')
@@ -27,7 +29,7 @@ class IncomingEmailForm
                         ->searchable(),
                     Select::make('related_id')
                         ->label('Referente')
-                        ->options(fn () => Employee::query()->where('is_active', true)->orderBy('name')->get()->mapWithKeys(
+                        ->options(fn () => Employee::query()->where('company_id', app(EmailRouter::class)->orgCompanyId(Filament::getTenant()?->getKey()))->where('is_active', true)->orderBy('name')->get()->mapWithKeys(
                             fn (Employee $e) => [$e->id => $e->name.($e->employee_roles ? ' — '.implode(', ', $e->employee_roles) : '')]
                         )->all())
                         ->searchable()

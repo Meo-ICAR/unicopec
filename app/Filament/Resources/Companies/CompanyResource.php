@@ -13,6 +13,8 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class CompanyResource extends Resource
 {
@@ -30,6 +32,29 @@ class CompanyResource extends Resource
 
     // L'anagrafica delle società è globale: non si filtra sulla società corrente.
     protected static bool $isScopedToTenant = false;
+
+    /** Chi non è super admin vede solo la propria società e non può crearne né eliminarne. */
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
+
+        return parent::getEloquentQuery()->when(! $user?->isSuperAdmin(), fn (Builder $query) => $query->whereKey($user?->company_id));
+    }
+
+    public static function canCreate(): bool
+    {
+        return (bool) auth()->user()?->isSuperAdmin();
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return (bool) auth()->user()?->isSuperAdmin();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return (bool) auth()->user()?->isSuperAdmin();
+    }
 
     public static function form(Schema $schema): Schema
     {

@@ -27,6 +27,9 @@ class MailAccountResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
+    // Le caselle si gestiscono dalla società (relation manager «Caselle email / PEC»): niente voce di menu a parte.
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function form(Schema $schema): Schema
     {
         return MailAccountForm::configure($schema);
