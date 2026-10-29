@@ -45,6 +45,9 @@ return [
         'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
         'redirect' => env('MICROSOFT_REDIRECT_URI'),
         'tenant' => env('MICROSOFT_TENANT_ID', 'common'),
+        // Collegamento delle caselle Microsoft 365 (OAuth per IMAP): tenant e indirizzo di ritorno propri, se diversi da quelli del login.
+        'mail_tenant' => env('MICROSOFT_MAIL_TENANT'),
+        'mail_redirect' => env('MICROSOFT_MAIL_REDIRECT_URI'),
     ],
 
     'google' => [

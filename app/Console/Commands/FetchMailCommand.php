@@ -4,11 +4,11 @@ namespace App\Console\Commands;
 
 use App\Models\IncomingEmail;
 use App\Models\MailAccount;
+use App\Services\Mail\ImapClientFactory;
 use App\Services\Mail\PecEnvelope;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Attribute;
-use Webklex\PHPIMAP\ClientManager;
 
 class FetchMailCommand extends Command
 {
@@ -50,15 +50,7 @@ class FetchMailCommand extends Command
 
     private function fetch(MailAccount $account, PecEnvelope $envelope): void
     {
-        $client = (new ClientManager)->make([
-            'host' => $account->imap_host,
-            'port' => $account->imap_port,
-            'encryption' => in_array($account->imap_encryption, [null, '', 'none'], true) ? false : $account->imap_encryption,
-            'validate_cert' => true,
-            'username' => $account->imap_username,
-            'password' => $account->imap_password,
-            'protocol' => 'imap',
-        ]);
+        $client = app(ImapClientFactory::class)->make($account);
         $client->connect();
 
         $days = $this->option('days');

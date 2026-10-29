@@ -37,6 +37,7 @@ class MailAccountsTable
                 SelectFilter::make('company_id')->label('Società')->relationship('company', 'name')->visible($withCompany),
             ])
             ->recordActions([
+                self::connectMicrosoftAction(),
                 Action::make('test')
                     ->label('Prova connessione')
                     ->icon('heroicon-o-signal')
@@ -56,5 +57,16 @@ class MailAccountsTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /** Collega una casella Microsoft 365 con OAuth 2.0 (l'accesso IMAP con password è disattivato da Microsoft). */
+    public static function connectMicrosoftAction(): Action
+    {
+        return Action::make('collega_microsoft')
+            ->label(fn (MailAccount $record) => $record->auth_type === 'oauth2' && $record->provider === 'microsoft' ? 'Ricollega account Microsoft' : 'Collega account Microsoft')
+            ->icon('heroicon-o-link')
+            ->color('info')
+            ->visible(fn (MailAccount $record) => $record->provider === 'microsoft' || str_contains((string) $record->imap_host, 'office365') || str_contains((string) $record->imap_host, 'outlook'))
+            ->url(fn (MailAccount $record) => route('mail-oauth.microsoft.redirect', $record));
     }
 }
