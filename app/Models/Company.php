@@ -34,6 +34,11 @@ class Company extends Model
         return $this->hasMany(IncomingEmail::class);
     }
 
+    public function protocolRegisters(): HasMany
+    {
+        return $this->hasMany(ProtocolRegister::class);
+    }
+
     public function mailAccounts(): HasMany
     {
         return $this->hasMany(MailAccount::class);

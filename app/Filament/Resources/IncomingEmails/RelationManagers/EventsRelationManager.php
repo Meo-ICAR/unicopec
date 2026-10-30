@@ -33,6 +33,8 @@ class EventsRelationManager extends RelationManager
                         EmailEvent::BPM_EVENT => 'UnicoBPM',
                         EmailEvent::FORWARDED => 'Inoltro',
                         EmailEvent::ANOMALY => 'Anomalia',
+                        EmailEvent::TAKEN => 'Presa in carico',
+                        EmailEvent::PROTOCOLLED => 'Protocollo',
                         default => $state,
                     }),
                 TextColumn::make('status')->label('Esito')->badge()
