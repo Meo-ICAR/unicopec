@@ -9,6 +9,7 @@ use App\Models\IncomingEmail;
 use App\Services\Mail\EmailClassifier;
 use App\Services\Mail\EmailForwarder;
 use App\Services\Mail\EmailHandover;
+use App\Services\Protocol\PresaInCaricoProtocoller;
 use App\Services\Mail\EmailPipeline;
 use App\Services\Mail\EmailRouter;
 use Filament\Actions\Action;
@@ -192,10 +193,21 @@ class IncomingEmailsTable
             ->schema(fn (IncomingEmail $record) => [
                 Select::make('employee_id')->label('Presa in carico da')->required()->searchable()->default($record->related_id)
                     ->options(fn () => app(EmailHandover::class)->staff($record)->pluck('name', 'id')->all()),
+                Select::make('register_id')->label('Registro di protocollo')->searchable()
+                    ->visible(fn () => app(PresaInCaricoProtocoller::class)->isInUse($record))
+                    ->required(fn () => app(PresaInCaricoProtocoller::class)->isInUse($record))
+                    ->options(fn () => app(PresaInCaricoProtocoller::class)->allFor($record)->mapWithKeys(fn ($r) => [$r->id => "{$r->code} · {$r->name}"])->all()),
             ])
             ->action(function (IncomingEmail $record, array $data): void {
-                app(EmailHandover::class)->take($record, Employee::findOrFail($data['employee_id']), 'manuale');
-                Notification::make()->title('Presa in carico registrata')->success()->send();
+                $result = app(EmailHandover::class)->take($record, Employee::findOrFail($data['employee_id']), 'manuale', $data['register_id'] ?? null, auth()->id());
+
+                if ($result['error']) {
+                    Notification::make()->title($result['error'])->danger()->send();
+
+                    return;
+                }
+
+                Notification::make()->title('Presa in carico registrata'.($result['protocol'] ? ' · '.$result['protocol']->identifier : ''))->success()->send();
             });
     }
 }
