@@ -20,6 +20,8 @@ class EmailEvent extends Model
 
     public const TAKEN = 'taken';
 
+    public const PROTOCOLLED = 'protocolled';
+
     protected $guarded = ['id'];
 
     protected function casts(): array

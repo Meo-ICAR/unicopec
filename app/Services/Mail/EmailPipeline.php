@@ -8,6 +8,7 @@ use App\Models\EmailEvent;
 use App\Models\Employee;
 use App\Models\IncomingEmail;
 use App\Services\Bpm\BpmEvents;
+use App\Services\Protocol\SmistamentoProtocoller;
 
 /**
  * Cosa succede dopo ogni passo, in un posto solo (comandi, coda e schermate lo usano allo stesso modo): si scrive nel registro e si avvisa UnicoBPM.
@@ -16,7 +17,7 @@ use App\Services\Bpm\BpmEvents;
  */
 class EmailPipeline
 {
-    public function __construct(private EmailForwarder $forwarder) {}
+    public function __construct(private EmailForwarder $forwarder, private SmistamentoProtocoller $protocoller) {}
 
     public function classified(IncomingEmail $email, Classification $result): void
     {
@@ -39,6 +40,13 @@ class EmailPipeline
         EmailEvent::record($email, EmailEvent::ASSIGNED, 'ok', "Assegnata a {$found['employee']->name} ({$found['role']}; {$found['via']})", [
             'employee_id' => $found['employee']->id, 'role' => $found['role'], 'via' => $found['via'], 'org_company_id' => $found['org_company_id'],
         ]);
+
+        // Il protocollo di smistamento non deve bloccare l'inoltro: se fallisce resta un'anomalia e lo recupera protocol:backfill.
+        try {
+            $this->protocoller->protocol($email);
+        } catch (\Throwable $e) {
+            EmailEvent::record($email, EmailEvent::ANOMALY, 'error', 'Protocollo di smistamento non riuscito: '.mb_substr($e->getMessage(), 0, 200));
+        }
 
         if (! BpmEvents::isConfigured()) {
             $this->forwarder->forward($email->refresh(), 'UnicoBPM non configurato');
