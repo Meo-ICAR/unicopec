@@ -126,4 +126,34 @@ class ProtocolNumbererTest extends TestCase
 
         $this->assertEqualsCanonicalizing(['it', 'dpo'], $register->roleNames());
     }
+
+    public function test_year_follows_italian_time_at_new_year(): void
+    {
+        $register = $this->register();
+
+        // 31/12 23:30 UTC sono già le 00:30 del 1° gennaio in Italia.
+        Carbon::setTestNow('2026-12-31 23:30:00');
+        $protocol = $this->assign($register);
+
+        $this->assertSame(2027, $protocol->year);
+        $this->assertSame('FIS/2027/000001', $protocol->identifier);
+    }
+
+    public function test_register_code_cannot_change_once_it_has_protocols(): void
+    {
+        $register = $this->register();
+        $register->update(['name' => 'Rinominato']); // il nome si può cambiare
+        $this->assign($register);
+
+        $this->expectException(\LogicException::class);
+        $register->update(['code' => 'ALTRO']);
+    }
+
+    public function test_register_code_can_change_before_the_first_protocol(): void
+    {
+        $register = $this->register();
+        $register->update(['code' => 'NUOVO']);
+
+        $this->assertSame('NUOVO', $register->fresh()->code);
+    }
 }

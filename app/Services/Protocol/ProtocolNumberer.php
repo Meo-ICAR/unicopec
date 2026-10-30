@@ -15,7 +15,10 @@ class ProtocolNumberer
     {
         return DB::transaction(function () use ($register, $email, $type, $role, $employee, $parent, $userId) {
             $now = now();
-            $year = $now->year;
+            $year = now(config('pec.protocol_timezone'))->year;
+
+            // Si blocca prima il registro: due assegnazioni nello stesso registro si mettono in fila invece di incrociare i blocchi sul contatore.
+            ProtocolRegister::query()->whereKey($register->id)->lockForUpdate()->first();
 
             DB::table('protocol_register_counters')->insertOrIgnore(['protocol_register_id' => $register->id, 'year' => $year, 'last_number' => 0]);
 

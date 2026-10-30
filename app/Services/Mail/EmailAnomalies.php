@@ -7,6 +7,7 @@ use App\Models\EmailEvent;
 use App\Models\Employee;
 use App\Models\IncomingEmail;
 use App\Models\Protocol;
+use App\Models\ProtocolRegister;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -35,6 +36,8 @@ class EmailAnomalies
                 ))
                 ->orWhere(fn ($q) => $q->whereIn('classification', $routable)->whereNotNull('related_id')->whereNotExists(
                     fn ($sub) => $sub->selectRaw('1')->from('protocols')->whereColumn('protocols.incoming_email_id', 'incoming_emails.id')->where('protocols.type', Protocol::SMISTAMENTO)
+                )->whereExists(
+                    fn ($sub) => $sub->selectRaw('1')->from('protocol_registers')->whereColumn('protocol_registers.company_id', 'incoming_emails.company_id')->where('protocol_registers.is_active', true)
                 ))
                 ->orWhere(fn ($q) => $q->whereNotNull('awaiting_since')->whereNull('taken_at')->where('awaiting_since', '<', now()->subDay()))
                 ->orWhereExists(fn ($sub) => $sub->selectRaw('1')->from('email_events')->whereColumn('email_events.incoming_email_id', 'incoming_emails.id')->where('email_events.kind', EmailEvent::ANOMALY)->where('email_events.status', 'error'));
@@ -63,7 +66,7 @@ class EmailAnomalies
                     $found[] = 'Referente non valido (inattivo o senza email)';
                 }
 
-                if (! $email->protocols()->where('type', Protocol::SMISTAMENTO)->exists()) {
+                if (! $email->protocols()->where('type', Protocol::SMISTAMENTO)->exists() && ProtocolRegister::query()->where('company_id', $email->company_id)->where('is_active', true)->exists()) {
                     $found[] = 'Smistata ma senza protocollo';
                 }
             }

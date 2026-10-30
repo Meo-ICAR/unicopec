@@ -31,6 +31,11 @@ class SmistamentoProtocoller
             return null;
         }
 
+        // Senza registri attivi la società non usa il protocollo: nessun numero e nessuna anomalia.
+        if (! ProtocolRegister::query()->where('company_id', $email->company_id)->where('is_active', true)->exists()) {
+            return null;
+        }
+
         $register = ProtocolRegister::forRoles((int) $email->company_id, [$role])->first();
 
         if (! $register) {
@@ -49,6 +54,9 @@ class SmistamentoProtocoller
             // Un'altra esecuzione ha protocollato nel frattempo: vale quel numero.
             return $this->existing($email) ?? throw $e;
         }
+
+        // L'anomalia «nessun registro» non ha più motivo di restare aperta.
+        $email->events()->where('kind', EmailEvent::ANOMALY)->where('status', 'error')->where('message', 'like', 'Nessun registro di protocollo%')->update(['status' => 'resolved']);
 
         $email->archive_status ??= 'da_archiviare';
         $email->save();

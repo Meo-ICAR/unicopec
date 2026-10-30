@@ -64,6 +64,20 @@ return [
             ]) : [],
         ],
 
+        // Database condiviso della suite (email_templates di unico-core), letto da unico-core con la connessione `core`.
+        'core' => [
+            'driver' => 'mysql',
+            'host' => env('CORE_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('CORE_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('CORE_DB_DATABASE', env('DB_DATABASE', 'laravel')),
+            'username' => env('CORE_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('CORE_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'strict' => true,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

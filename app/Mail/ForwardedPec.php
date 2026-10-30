@@ -41,6 +41,7 @@ class ForwardedPec extends Mailable
             'role' => $this->role,
             'takeUrl' => $this->takeUrl,
             'note' => $this->note,
+            'protocols' => $this->email->protocols()->pluck('identifier')->implode(', '),
             'category' => EmailCategory::tryFrom((string) $this->email->classification)?->getLabel(),
             'bodyText' => trim((string) ($this->email->body_text ?: strip_tags((string) $this->email->body_html))),
             'attachmentsNote' => $media->isEmpty() ? 'nessuno' : ($tooBig

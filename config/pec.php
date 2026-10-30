@@ -13,6 +13,9 @@ return [
         'simulation_to' => env('PEC_FORWARD_SIMULATION_TO', ''),
     ],
 
+    // Fuso orario che decide l'anno del protocollo (la numerazione riparte a Capodanno italiano, non UTC).
+    'protocol_timezone' => env('PEC_PROTOCOL_TIMEZONE', 'Europe/Rome'),
+
     'archive' => [
         // Servizio di archiviazione a norma: per ora esiste solo `fake`, che non invia nulla.
         'driver' => env('PEC_ARCHIVE_DRIVER', 'fake'),

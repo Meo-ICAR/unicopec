@@ -7,6 +7,7 @@ use App\Mail\ForwardedPec;
 use App\Models\Employee;
 use App\Models\IncomingEmail;
 use App\Models\MailAccount;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Unico\Core\Mail\EmailTemplateResolver;
 use Unico\Core\Mail\OutgoingMailer;
@@ -28,7 +29,13 @@ class ForwardMessageFactory
 
     public function make(IncomingEmail $email, Employee $employee, ?string $banner = null, ?string $role = null, ?string $takeUrl = null, ?string $note = null): ForwardedPec
     {
-        $template = $this->templates->resolve(self::TEMPLATE, $email->company_id, self::APP);
+        // Se i modelli non sono raggiungibili l'inoltro non deve fermarsi: si usa il testo predefinito.
+        try {
+            $template = $this->templates->resolve(self::TEMPLATE, $email->company_id, self::APP);
+        } catch (\Throwable $e) {
+            Log::warning('Modello email pec.inoltro non leggibile', ['error' => mb_substr($e->getMessage(), 0, 200)]);
+            $template = null;
+        }
 
         if (! $template || blank($template->body)) {
             return new ForwardedPec($email, $employee, $banner, $role, $takeUrl, $note);
@@ -67,14 +74,14 @@ class ForwardMessageFactory
         $this->mailer->send($account, $to, $mail);
     }
 
-    /** Casella SMTP della società, in forma di unico-core: le credenziali restano cifrate e si leggono con la chiave dell'app. */
+    /** Casella SMTP (non PEC: dalla PEC tornerebbero le ricevute del gestore) della società, in forma di unico-core: le credenziali restano cifrate e si leggono con la chiave dell'app. */
     private function account(IncomingEmail $email): ?CoreMailAccount
     {
         if ($email->company_id === null) {
             return null;
         }
 
-        $own = MailAccount::query()->where('company_id', $email->company_id)->where('is_active', true)->orderBy('is_pec')->orderBy('id')->get()
+        $own = MailAccount::query()->where('company_id', $email->company_id)->where('is_active', true)->where('is_pec', false)->orderBy('id')->get()
             ->first(fn (MailAccount $a) => ($a->auth_type ?? 'password') === 'password' && filled($a->smtp_host) && filled($a->smtp_password));
 
         if (! $own) {

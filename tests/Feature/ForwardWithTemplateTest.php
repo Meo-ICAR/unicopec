@@ -133,4 +133,35 @@ class ForwardWithTemplateTest extends TestCase
         }
         $this->assertCount(0, (new ForwardedPec($this->email->fresh(), $this->mario))->attachments());
     }
+
+    public function test_template_lookup_failure_falls_back_to_default_text(): void
+    {
+        config(['unico-core.connection' => 'core']); // come in produzione: connessione non configurata
+
+        $result = app(EmailForwarder::class)->forward($this->email->fresh());
+
+        $this->assertSame('ok', $result['status']);
+        Mail::assertSent(ForwardedPec::class, fn (ForwardedPec $m) => str_contains($m->render(), 'perché è stata assegnata a te'));
+    }
+
+    public function test_default_text_shows_the_protocol_number(): void
+    {
+        $this->protocol();
+
+        app(EmailForwarder::class)->forward($this->email->fresh());
+
+        Mail::assertSent(ForwardedPec::class, fn (ForwardedPec $m) => str_contains($m->render(), 'FIS/'.now()->year.'/000001'));
+    }
+
+    public function test_pec_only_company_forwards_with_the_app_mailer(): void
+    {
+        MailAccount::create(['company_id' => $this->company->id, 'name' => 'PEC', 'email_address' => 'pec@alfa.it', 'is_pec' => true, 'is_active' => true, 'smtp_host' => 'smtp.pec.it', 'smtp_port' => 465, 'smtp_password' => 'x']);
+        $core = Mockery::mock(OutgoingMailer::class);
+        $core->shouldNotReceive('send');
+        $this->app->instance(OutgoingMailer::class, $core);
+
+        app(EmailForwarder::class)->forward($this->email->fresh());
+
+        Mail::assertSent(ForwardedPec::class);
+    }
 }

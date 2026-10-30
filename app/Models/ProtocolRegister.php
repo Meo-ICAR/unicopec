@@ -18,6 +18,16 @@ class ProtocolRegister extends Model
         return ['is_active' => 'boolean'];
     }
 
+    protected static function booted(): void
+    {
+        // Il numero leggibile contiene la sigla: dopo il primo protocollo non può cambiare.
+        static::updating(function (self $register) {
+            if ($register->isDirty('code') && $register->protocols()->exists()) {
+                throw new \LogicException('La sigla di un registro con protocolli non si cambia.');
+            }
+        });
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

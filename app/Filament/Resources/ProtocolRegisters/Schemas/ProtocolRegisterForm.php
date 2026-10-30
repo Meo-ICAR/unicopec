@@ -18,9 +18,10 @@ class ProtocolRegisterForm
         return $schema->components([
             Section::make('Registro')->columns(2)->schema([
                 TextInput::make('code')->label('Sigla')->required()->maxLength(10)->alphaDash()
+                    ->disabled(fn (?\App\Models\ProtocolRegister $record) => $record?->protocols()->exists())
                     ->dehydrateStateUsing(fn (?string $state) => strtoupper((string) $state))
                     ->unique(ignoreRecord: true, modifyRuleUsing: fn (Unique $rule) => $rule->where('company_id', Filament::getTenant()?->getKey()))
-                    ->helperText('Compare nel numero, per esempio FIS/2026/000045. La sigla non si cambia più dopo i primi protocolli.'),
+                    ->helperText('Compare nel numero, per esempio FIS/2026/000045. Dopo il primo protocollo la sigla non si può più cambiare.'),
                 TextInput::make('name')->label('Nome')->required()->maxLength(255),
                 Select::make('roles')->label('Funzioni che possono protocollare')->multiple()->searchable()->columnSpanFull()
                     ->options(fn () => DB::table('employee_types')->orderBy('name')->pluck('name', 'name')->all())

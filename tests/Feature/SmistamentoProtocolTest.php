@@ -126,6 +126,7 @@ class SmistamentoProtocolTest extends TestCase
 
     public function test_anomaly_includes_routed_email_without_protocol(): void
     {
+        $this->register('LEG', ['legale']); // la società usa il protocollo
         $email = $this->email();
 
         $this->assertContains('Smistata ma senza protocollo', EmailAnomalies::for($email->load('events')));
@@ -135,6 +136,31 @@ class SmistamentoProtocolTest extends TestCase
         Artisan::call('protocol:backfill');
 
         $this->assertNotContains('Smistata ma senza protocollo', EmailAnomalies::for($email->fresh()->load('events')));
+        $this->assertFalse(IncomingEmail::query()->withAnomalies()->whereKey($email->id)->exists());
+    }
+
+    public function test_company_without_any_register_gets_no_anomaly_at_all(): void
+    {
+        $email = $this->email(routed: false);
+
+        $this->route($email);
+
+        $this->assertSame(0, EmailEvent::where('incoming_email_id', $email->id)->where('kind', EmailEvent::ANOMALY)->count());
+        $this->assertNotContains('Smistata ma senza protocollo', EmailAnomalies::for($email->fresh()->load('events')));
+        $this->assertFalse(IncomingEmail::query()->withAnomalies()->whereKey($email->id)->exists());
+    }
+
+    public function test_missing_register_anomaly_is_closed_when_the_email_gets_its_protocol(): void
+    {
+        $this->register('LEG', ['legale']);
+        $email = $this->email(routed: false);
+        $this->route($email);
+        $this->assertTrue(IncomingEmail::query()->withAnomalies()->whereKey($email->id)->exists());
+
+        $this->register('FIS', ['contabile responsabile']);
+        Artisan::call('protocol:backfill');
+
+        $this->assertSame(1, $email->protocols()->count());
         $this->assertFalse(IncomingEmail::query()->withAnomalies()->whereKey($email->id)->exists());
     }
 }

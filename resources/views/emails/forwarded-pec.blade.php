@@ -24,6 +24,9 @@
         <tr><td style="padding:2px 12px 2px 0; color:#6b7280;">Oggetto</td><td>{{ $email->subject }}</td></tr>
         <tr><td style="padding:2px 12px 2px 0; color:#6b7280;">Ricevuta il</td><td>{{ $email->received_at?->format('d/m/Y H:i') }}</td></tr>
         <tr><td style="padding:2px 12px 2px 0; color:#6b7280;">Casella</td><td>{{ $email->mailAccount?->email_address }}</td></tr>
+        @if ($protocols)
+            <tr><td style="padding:2px 12px 2px 0; color:#6b7280;">Protocollo</td><td>{{ $protocols }}</td></tr>
+        @endif
         @if ($category)
             <tr><td style="padding:2px 12px 2px 0; color:#6b7280;">Classificazione</td><td>{{ $category }}</td></tr>
         @endif
