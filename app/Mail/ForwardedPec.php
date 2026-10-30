@@ -16,18 +16,22 @@ class ForwardedPec extends Mailable
 {
     private const MAX_ATTACHMENTS_BYTES = 15 * 1024 * 1024;
 
-    public function __construct(public IncomingEmail $email, public Employee $employee, public ?string $banner = null, public ?string $role = null, public ?string $takeUrl = null, public ?string $note = null) {}
+    public function __construct(public IncomingEmail $email, public Employee $employee, public ?string $banner = null, public ?string $role = null, public ?string $takeUrl = null, public ?string $note = null, public ?string $subjectOverride = null, public ?string $htmlBody = null) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Inoltro '.($this->email->mailAccount?->is_pec ? 'PEC' : 'email').': '.$this->email->subject,
+            subject: $this->subjectOverride ?: 'Inoltro '.($this->email->mailAccount?->is_pec ? 'PEC' : 'email').': '.$this->email->subject,
             replyTo: $this->email->from_email ? [new Address($this->email->from_email, (string) $this->email->from_name)] : [],
         );
     }
 
     public function content(): Content
     {
+        if ($this->htmlBody !== null) {
+            return new Content(htmlString: $this->htmlBody);
+        }
+
         $media = $this->email->getMedia(IncomingEmail::ATTACHMENTS);
         $tooBig = $media->sum('size') > self::MAX_ATTACHMENTS_BYTES;
 

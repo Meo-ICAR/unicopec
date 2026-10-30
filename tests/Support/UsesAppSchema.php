@@ -51,6 +51,7 @@ trait UsesAppSchema
             $t->boolean('is_pec')->default(false);
             $t->boolean('is_active')->default(true);
             $t->string('type', 30)->default('generale');
+            $t->string('auth_type')->default('password');
             $t->string('smtp_host')->nullable();
             $t->integer('smtp_port')->nullable();
             $t->string('smtp_username')->nullable();
@@ -94,6 +95,9 @@ trait UsesAppSchema
             $t->string('type', 30)->nullable();
             $t->timestamps();
         });
+
+        // I modelli di unico-core leggono dalla connessione core (unicosuite): nei test è la stessa sqlite.
+        config(['unico-core.connection' => config('database.default')]);
 
         $this->artisan('migrate', ['--force' => true]);
 

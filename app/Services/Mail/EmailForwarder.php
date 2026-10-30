@@ -2,11 +2,9 @@
 
 namespace App\Services\Mail;
 
-use App\Mail\ForwardedPec;
 use App\Models\Employee;
 use App\Models\EmailEvent;
 use App\Models\IncomingEmail;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Inoltra una PEC/email all'indirizzo del suo referente (usato quando in UnicoBPM non c'è un processo che la prenda in carico).
@@ -15,7 +13,7 @@ use Illuminate\Support\Facades\Mail;
  */
 class EmailForwarder
 {
-    public function __construct(private EmailRouter $router) {}
+    public function __construct(private EmailRouter $router, private ForwardMessageFactory $messages) {}
 
     /** @return array{status: string, message: string} esito: ok | warning (simulato o già inoltrata) | error */
     public function forward(IncomingEmail $email, string $reason = 'Inoltro richiesto', bool $force = false): array
@@ -48,7 +46,7 @@ class EmailForwarder
         }
 
         try {
-            Mail::to($to)->send(new ForwardedPec($email, $employee, $banner, $this->roleOf($email)));
+            $this->messages->deliver($email, $to, $this->messages->make($email, $employee, $banner, $this->roleOf($email)));
         } catch (\Throwable $e) {
             return $this->done($email, 'error', 'Inoltro non riuscito: '.mb_substr($e->getMessage(), 0, 200), true);
         }

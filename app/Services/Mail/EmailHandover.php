@@ -2,7 +2,6 @@
 
 namespace App\Services\Mail;
 
-use App\Mail\ForwardedPec;
 use App\Models\EmailEvent;
 use App\Models\Employee;
 use App\Jobs\ArchiveEmail;
@@ -21,7 +20,7 @@ use Illuminate\Support\Facades\URL;
  */
 class EmailHandover
 {
-    public function __construct(private EmailRouter $router, private PresaInCaricoProtocoller $protocols) {}
+    public function __construct(private EmailRouter $router, private PresaInCaricoProtocoller $protocols, private ForwardMessageFactory $messages) {}
 
     /** @return Collection<int, Employee> chi ha il ruolo, tra gli attivi con email dell'organigramma della società */
     public function holdersOf(IncomingEmail $email, string $role): Collection
@@ -62,7 +61,7 @@ class EmailHandover
             $banner = $simulation ? "SIMULAZIONE: destinatario previsto {$employee->name} <{$employee->email}>." : null;
 
             try {
-                Mail::to($simulation ? $simulationTo : $employee->email)->send(new ForwardedPec($email, $employee, $banner, null, $this->takeUrl($email, $employee), $note));
+                $this->messages->deliver($email, $simulation ? $simulationTo : $employee->email, $this->messages->make($email, $employee, $banner, null, $this->takeUrl($email, $employee), $note));
                 $sent[] = $employee->name;
             } catch (\Throwable $e) {
                 $failed[] = $employee->name;
