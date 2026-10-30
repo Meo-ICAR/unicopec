@@ -96,5 +96,13 @@ trait UsesAppSchema
         });
 
         $this->artisan('migrate', ['--force' => true]);
+
+        // Colonne di users che l'app usa e che vengono dal database ripristinato.
+        Schema::table('users', function (Blueprint $t) {
+            $t->string('role')->default('user');
+            $t->unsignedBigInteger('company_id')->nullable();
+            $t->unsignedBigInteger('last_company_id')->nullable();
+            $t->softDeletes();
+        });
     }
 }
