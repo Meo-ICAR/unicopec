@@ -5,6 +5,7 @@ namespace App\Services\Mail;
 use App\Mail\ForwardedPec;
 use App\Models\EmailEvent;
 use App\Models\Employee;
+use App\Jobs\ArchiveEmail;
 use App\Models\IncomingEmail;
 use App\Models\Protocol;
 use App\Services\Protocol\PresaInCaricoProtocoller;
@@ -129,6 +130,12 @@ class EmailHandover
             if ($register) {
                 $protocol = $this->protocols->protocol($locked, $employee, $register, $userId);
                 EmailEvent::record($locked, EmailEvent::PROTOCOLLED, 'ok', "Protocollata {$protocol->identifier} (presa in carico)", ['protocol_id' => $protocol->id, 'identifier' => $protocol->identifier]);
+
+                if (! $locked->archive_status) {
+                    $locked->forceFill(['archive_status' => 'da_archiviare'])->save();
+                }
+
+                ArchiveEmail::dispatch($locked->id)->afterCommit();
             }
 
             return ['taken' => true, 'by' => $employee, 'protocol' => $protocol, 'error' => null];

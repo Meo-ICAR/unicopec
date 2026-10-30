@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Client;
 use App\Models\Employee;
+use App\Services\Archive\ArchiveService;
+use App\Services\Archive\FakeArchiveService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -18,7 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ArchiveService::class, fn () => match (config('pec.archive.driver')) {
+            'fake' => new FakeArchiveService,
+            default => throw new \InvalidArgumentException('Servizio di archiviazione sconosciuto: '.config('pec.archive.driver')),
+        });
     }
 
     /**

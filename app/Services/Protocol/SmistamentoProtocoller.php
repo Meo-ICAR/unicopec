@@ -50,6 +50,9 @@ class SmistamentoProtocoller
             return $this->existing($email) ?? throw $e;
         }
 
+        $email->archive_status ??= 'da_archiviare';
+        $email->save();
+
         EmailEvent::record($email, EmailEvent::PROTOCOLLED, 'ok', "Protocollata {$protocol->identifier} (smistamento)", ['protocol_id' => $protocol->id, 'identifier' => $protocol->identifier]);
 
         return $protocol;

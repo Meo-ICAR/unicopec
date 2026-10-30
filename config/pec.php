@@ -13,6 +13,13 @@ return [
         'simulation_to' => env('PEC_FORWARD_SIMULATION_TO', ''),
     ],
 
+    'archive' => [
+        // Servizio di archiviazione a norma: per ora esiste solo `fake`, che non invia nulla.
+        'driver' => env('PEC_ARCHIVE_DRIVER', 'fake'),
+        // Giorni di attesa della presa in carico, poi si archivia con il solo protocollo di smistamento.
+        'max_wait_days' => (int) env('PEC_ARCHIVE_MAX_WAIT_DAYS', 7),
+    ],
+
     'ai' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5-5'),

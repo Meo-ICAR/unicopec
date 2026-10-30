@@ -22,6 +22,8 @@ class EmailEvent extends Model
 
     public const PROTOCOLLED = 'protocolled';
 
+    public const ARCHIVED = 'archived';
+
     protected $guarded = ['id'];
 
     protected function casts(): array
