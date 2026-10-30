@@ -3,6 +3,7 @@
 namespace App\Services\Mail;
 
 use App\Enums\EmailCategory;
+use App\Models\ClassificationRule;
 use App\Models\EmailEvent;
 use App\Models\Employee;
 use App\Models\IncomingEmail;
@@ -19,10 +20,12 @@ class EmailPipeline
 
     public function classified(IncomingEmail $email, Classification $result): void
     {
-        $email->forceFill(['classification' => $result->category->value])->save();
+        $email->forceFill(['classification' => $result->category->value, 'classification_rule_id' => $result->ruleId])->save();
 
-        EmailEvent::record($email, EmailEvent::CLASSIFIED, 'ok', sprintf('%s · urgenza %s · %s', $result->category->getLabel(), $result->urgency, $result->source === 'rules' ? 'regole' : 'AI '.number_format($result->confidence, 2)), [
-            'category' => $result->category->value, 'urgency' => $result->urgency, 'summary' => $result->summary, 'source' => $result->source,
+        $ruleName = $result->ruleId ? ClassificationRule::find($result->ruleId)?->name : null;
+
+        EmailEvent::record($email, EmailEvent::CLASSIFIED, 'ok', sprintf('%s · urgenza %s · %s', $result->category->getLabel(), $result->urgency, $result->source === 'rules' ? 'regola'.($ruleName ? " «{$ruleName}»" : '') : 'AI '.number_format($result->confidence, 2)), [
+            'category' => $result->category->value, 'urgency' => $result->urgency, 'summary' => $result->summary, 'source' => $result->source, 'rule_id' => $result->ruleId,
         ]);
 
         BpmEvents::dispatchReceived($email, $result);

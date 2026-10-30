@@ -24,14 +24,6 @@ Choose the ONE category that best matches what the sender wants or notifies; use
 "confidence" is a number from 0 to 1.
 TXT;
 
-    /** Mittenti e parole che identificano con certezza una categoria. */
-    private const RULES = [
-        // [categoria, pattern sul mittente, pattern su oggetto+testo]
-        [EmailCategory::DpoPrivacy, '/@pec\.gpdp\.it$/i', '/\bRPD\b|\bDPO\b|garante per la protezione dei dati/iu'],
-        [EmailCategory::Fiscale, '/(agenziariscossione|agenziaentrate|finanze)\.gov\.it$/i', null],
-        [EmailCategory::PrevidenzaLavoro, '/(postacert\.)?inps\.gov\.it$|inail\.it$/i', null],
-    ];
-
     public function classify(IncomingEmail $email): Classification
     {
         return $this->byRules($email) ?? $this->byAi($email);
@@ -43,30 +35,21 @@ TXT;
             return new Classification(EmailCategory::ProviderNotification, 'bassa', 'Ricevuta o notifica automatica del gestore PEC.', 1.0, 'rules');
         }
 
-        $text = $email->subject.' '.strip_tags((string) ($email->body_text ?: $email->body_html));
+        $rule = app(RuleMatcher::class)->firstMatch($email);
 
-        foreach (self::RULES as [$category, $senderPattern, $textPattern]) {
-            $senderMatches = $senderPattern && preg_match($senderPattern, (string) $email->from_email);
-            $textMatches = $textPattern && preg_match($textPattern, $text);
-
-            if ($senderMatches || $textMatches) {
-                // Le regole sicure decidono l'argomento; urgenza e sintesi le dà comunque l'AI se disponibile.
-                return $this->enrich($email, $category);
-            }
-        }
-
-        return null;
+        // Le regole sicure decidono l'argomento; urgenza e sintesi le dà comunque l'AI se disponibile.
+        return $rule ? $this->enrich($email, $rule->category, $rule->id) : null;
     }
 
     /** Categoria decisa dalle regole: l'AI (se configurata) aggiunge solo urgenza e sintesi. */
-    private function enrich(IncomingEmail $email, EmailCategory $category): Classification
+    private function enrich(IncomingEmail $email, EmailCategory $category, int $ruleId): Classification
     {
         try {
             $ai = $this->byAi($email, $category);
 
-            return new Classification($category, $ai->urgency, $ai->summary, 1.0, 'rules');
+            return new Classification($category, $ai->urgency, $ai->summary, 1.0, 'rules', $ruleId);
         } catch (\Throwable) {
-            return new Classification($category, 'normale', (string) $email->subject, 1.0, 'rules');
+            return new Classification($category, 'normale', (string) $email->subject, 1.0, 'rules', $ruleId);
         }
     }
 

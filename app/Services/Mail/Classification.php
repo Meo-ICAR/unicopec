@@ -13,5 +13,6 @@ readonly class Classification
         public string $summary,
         public float $confidence,
         public string $source,
+        public ?int $ruleId = null,
     ) {}
 }
