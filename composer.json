@@ -13,6 +13,7 @@
         "laravel/framework": "^13.17",
         "laravel/socialite": "^5.28",
         "laravel/tinker": "^3.0",
+        "meo-icar/unico-core": "*@dev",
         "owenvoke/blade-fontawesome": "^3.3",
         "socialiteproviders/google": "^4.1",
         "socialiteproviders/microsoft": "^4.9",
@@ -91,5 +92,10 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [{
+        "name": "unico-core",
+        "type": "path",
+        "url": "../unico-core"
+    }]
 }
