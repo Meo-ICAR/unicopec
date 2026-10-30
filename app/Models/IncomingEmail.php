@@ -64,6 +64,11 @@ class IncomingEmail extends Model implements HasMedia
         return EmailAnomalies::scope($query);
     }
 
+    public function protocols(): HasMany
+    {
+        return $this->hasMany(Protocol::class)->orderBy('id');
+    }
+
     public function takenBy(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'taken_by_id');
