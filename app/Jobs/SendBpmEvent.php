@@ -29,8 +29,14 @@ class SendBpmEvent implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [60, 300, 900, 3600, 14400];
 
+    /** Email a cui l'evento si riferisce. Ha un valore predefinito proprio: i job accodati da versioni precedenti non lo contengono. */
+    public ?int $emailId = null;
+
     /** @param array<string,mixed> $event */
-    public function __construct(public array $event, public ?int $emailId = null) {}
+    public function __construct(public array $event, ?int $emailId = null)
+    {
+        $this->emailId = $emailId;
+    }
 
     public function handle(): void
     {
