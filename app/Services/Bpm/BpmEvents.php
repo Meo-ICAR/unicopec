@@ -48,7 +48,7 @@ class BpmEvents
      * l'IBAN è mascherato (paese e ultime 4 cifre), il valore completo si legge con GET /api/incoming-emails/{id}. `controlli` elenca i segnali di rischio
      * calcolati dal codice; UnicoBPM deve trattare una richiesta con controlli come «da verificare», mai come automatica.
      *
-     * @param  array{intent: string, confidence: float, summary: string, entities: array<string, mixed>, flags: array<int, string>}  $intent
+     * @param  array{intent: string, confidence: float, summary: string, entities: array<string, mixed>, flags: array<int, string>, confronto?: array{esito: string, proforma: ?float, dettaglio: string}}  $intent
      * @return array<string,mixed>
      */
     public static function request(IncomingEmail $email, array $intent): array
@@ -66,8 +66,13 @@ class BpmEvents
                 'affidabilita' => $intent['confidence'],
                 'dati' => $entities,
                 'controlli' => $intent['flags'],
+                // Per i modelli email di UnicoBPM, che leggono solo valori semplici.
+                'controlli_testo' => implode(', ', $intent['flags']),
                 'verifica_richiesta' => $intent['flags'] !== [],
-            ],
+            ] + (isset($intent['confronto']) ? [
+                // Per le fatture: esito del confronto con il totale del proforma (letto dall'allegato con l'AI).
+                'confronto' => ['esito' => $intent['confronto']['esito'], 'proforma' => $intent['confronto']['proforma'], 'dettaglio' => $intent['confronto']['dettaglio']],
+            ] : []),
         ];
     }
 

@@ -2,8 +2,6 @@
 
 namespace App\Services\Mail;
 
-use App\Models\Client;
-use App\Models\Employee;
 use App\Models\IncomingEmail;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -108,10 +106,8 @@ TXT;
             }
         }
 
-        $from = mb_strtolower((string) $email->from_email);
-        $known = Employee::query()->whereRaw('lower(email) = ?', [$from])->exists() || Client::query()->whereRaw('lower(email) = ?', [$from])->exists();
-
-        if (! $known) {
+        // Mittente conosciuto = produttore (agente, collaboratore) del core, riconosciuto da email, email privata o PEC.
+        if (app(ProducerDocuments::class)->producerOf($email) === null) {
             $flags[] = 'mittente_sconosciuto';
         }
 

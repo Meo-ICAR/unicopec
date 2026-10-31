@@ -6,6 +6,7 @@ use App\Models\EmailEvent;
 use App\Models\IncomingEmail;
 use App\Services\Bpm\BpmEvents;
 use App\Services\Mail\EmailIntentExtractor;
+use App\Services\Mail\InvoiceProformaChecker;
 use Illuminate\Console\Command;
 
 class IntentMailCommand extends Command
@@ -19,7 +20,7 @@ class IntentMailCommand extends Command
 
     protected $description = 'Legge le email con l\'AI per capire cosa chiedono (es. rettifica IBAN) e prepara la richiesta per UnicoBPM';
 
-    public function handle(EmailIntentExtractor $extractor): int
+    public function handle(EmailIntentExtractor $extractor, InvoiceProformaChecker $invoices): int
     {
         $emails = IncomingEmail::query()->with(['company', 'mailAccount'])
             ->when($this->argument('email'), fn ($q, $id) => $q->whereKey($id))
@@ -44,6 +45,12 @@ class IntentMailCommand extends Command
 
             $this->line('     '.$result['summary']);
             $this->line('     dati: '.json_encode($result['entities'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+            // Per le fatture si legge anche l'allegato e si confronta l'importo con il totale del proforma.
+            if ($result['intent'] === 'fattura_ricevuta') {
+                $result['confronto'] = $invoices->check($email);
+                $this->line('     confronto: '.$result['confronto']['dettaglio']);
+            }
 
             if ($result['flags']) {
                 $this->warn('     DA VERIFICARE: '.implode(', ', $result['flags']));

@@ -6,6 +6,7 @@ use App\Models\IncomingEmail;
 use App\Models\MailAccount;
 use App\Services\Mail\ImapClientFactory;
 use App\Services\Mail\PecEnvelope;
+use App\Services\Mail\ProducerDocuments;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Attribute;
@@ -124,6 +125,7 @@ class FetchMailCommand extends Command
             ]);
 
             $this->storeAttachments($envelopeData['attachments'], $email);
+            $this->archiveForProducer($email);
             $imported++;
 
             // L'evento per UnicoBPM parte dopo la classificazione (mail:classify), così porta già categoria e sintesi.
@@ -134,6 +136,16 @@ class FetchMailCommand extends Command
         }
 
         $this->info("#{$account->id} {$account->email_address}: nuove {$imported}, già presenti {$duplicates}".($this->option('dry-run') ? ' (dry-run)' : ''));
+    }
+
+    /** Gli allegati di un produttore (agente, collaboratore) entrano anche tra i suoi documenti nel core; un errore non ferma lo scaricamento. */
+    private function archiveForProducer(IncomingEmail $email): void
+    {
+        try {
+            app(ProducerDocuments::class)->store($email);
+        } catch (\Throwable $e) {
+            Log::warning('Allegati non archiviati tra i documenti del produttore', ['incoming_email_id' => $email->id, 'error' => mb_substr($e->getMessage(), 0, 200)]);
+        }
     }
 
     /** @param array<int, object> $attachments */

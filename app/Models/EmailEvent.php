@@ -26,6 +26,8 @@ class EmailEvent extends Model
 
     public const INTENT = 'intent';
 
+    public const INVOICE_CHECK = 'invoice_check';
+
     protected $guarded = ['id'];
 
     protected function casts(): array
