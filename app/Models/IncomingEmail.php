@@ -54,6 +54,21 @@ class IncomingEmail extends Model implements HasMedia
     }
 
     /** @return array{label: string, color: string} */
+    /** Corpo leggibile: il testo semplice, oppure (per le email solo HTML) il testo ricavato dall'HTML senza stili e script. */
+    public function readableBody(): string
+    {
+        if (filled(trim((string) $this->body_text))) {
+            return trim((string) $this->body_text);
+        }
+
+        $html = preg_replace('#<(style|script|head)\b.*?</\1>#is', '', (string) $this->body_html) ?? '';
+        $html = preg_replace('#<br\s*/?>|</(p|div|li|tr|h[1-6]|table)>#i', "\n", $html) ?? $html;
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace(['/[ \t\x{00A0}]+/u', '/ *\n */', '/\n{3,}/'], [' ', "\n", "\n\n"], $text) ?? $text;
+
+        return trim($text);
+    }
+
     public function outcome(): array
     {
         return EmailAnomalies::outcome($this);

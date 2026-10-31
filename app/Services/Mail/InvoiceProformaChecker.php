@@ -31,6 +31,7 @@ Extract the amounts exactly as printed, in euro, as plain numbers (dot as decima
 "document_type": "fattura" for an invoice, "nota_di_credito" for a credit note, "altro" if it is neither.
 "taxable" is the net amount before VAT (imponibile); "total" the document total including VAT (totale documento); "payable" the net amount actually due after withholdings and other deductions (netto a pagare).
 "proforma_reference" is the proforma number if the invoice cites one in its description or payment reason, otherwise null.
+"supplier" is the issuer of the document (cedente/prestatore, the one who bills), NOT the customer: legal name, VAT number (partita IVA, digits only), tax code (codice fiscale), street address, postal code, city, province (2 letters), phone, email, PEC, IBAN where payment is requested (copy it exactly, spaces removed), the account holder if printed next to the IBAN (iban_holder), the issuer's tax regime (tax_regime: "forfettario" for the flat-rate regime RF19, "ordinario" for the ordinary regime, "altro" otherwise) and the withholding tax percentage if the invoice shows a ritenuta d'acconto (withholding_percent, number only, e.g. "20"). For every supplier field use an empty string when it is not printed.
 "confidence" is a number from 0 to 1.
 TXT;
 
@@ -42,7 +43,7 @@ TXT;
 
         foreach ($this->documents($email) as $document) {
             try {
-                $read = $this->read($document);
+                $read = $this->readDocument($document);
             } catch (\Throwable $e) {
                 $invoices[] = ['documento' => $document->name, 'errore' => mb_substr($e->getMessage(), 0, 160), 'esito' => self::UNDETERMINED];
 
@@ -75,12 +76,27 @@ TXT;
     }
 
     /** @return iterable<int, Document> le fatture e note di credito archiviate dall'email */
-    private function documents(IncomingEmail $email): iterable
+    public function documents(IncomingEmail $email): iterable
     {
         $types = DocumentType::query()->whereIn('code', ['FATTURA_COLLABORATORE', 'NOTA_CREDITO_COLLABORATORE'])->pluck('id');
 
         return Document::query()->where('documentable_type', 'fornitore')->whereIn('document_type_id', $types)
             ->where('metadata->incoming_email_id', $email->id)->orderBy('id')->get();
+    }
+
+    /** Lettura AI di un documento, conservata in `metadata.invoice_read`: lo stesso allegato non si rilegge (e non si paga) due volte. @return array<string, mixed> */
+    public function readDocument(Document $document, bool $fresh = false): array
+    {
+        $cached = $document->metadata['invoice_read'] ?? null;
+
+        if (! $fresh && is_array($cached) && array_key_exists('cedente', $cached) && ($cached['v'] ?? 0) >= 2) {
+            return $cached;
+        }
+
+        $read = ['v' => 2] + $this->read($document);
+        $document->forceFill(['metadata' => array_merge((array) $document->metadata, ['invoice_read' => $read])])->saveQuietly();
+
+        return $read;
     }
 
     /** @return array<string, mixed> */
@@ -117,15 +133,21 @@ TXT;
                 'issued_at' => ['type' => ['string', 'null']],
                 'taxable' => $number, 'total' => $number, 'payable' => $number,
                 'proforma_reference' => ['type' => ['string', 'null']],
+                'supplier' => [
+                    'type' => 'object',
+                    'properties' => collect(['name', 'vat', 'tax_code', 'address', 'zip', 'city', 'province', 'phone', 'email', 'pec', 'iban', 'iban_holder', 'tax_regime', 'withholding_percent'])->mapWithKeys(fn ($f) => [$f => ['type' => 'string']])->all(),
+                    'required' => ['name', 'vat', 'tax_code', 'address', 'zip', 'city', 'province', 'phone', 'email', 'pec', 'iban', 'iban_holder', 'tax_regime', 'withholding_percent'],
+                    'additionalProperties' => false,
+                ],
                 'confidence' => ['type' => 'number'],
             ],
-            'required' => ['document_type', 'number', 'issued_at', 'taxable', 'total', 'payable', 'proforma_reference', 'confidence'],
+            'required' => ['document_type', 'number', 'issued_at', 'taxable', 'total', 'payable', 'proforma_reference', 'supplier', 'confidence'],
             'additionalProperties' => false,
         ];
 
         $response = Http::withHeaders(['x-api-key' => $key, 'anthropic-version' => '2023-06-01'])->timeout(90)->post('https://api.anthropic.com/v1/messages', [
             'model' => config('pec.ai.model'),
-            'max_tokens' => 500,
+            'max_tokens' => 900,
             'system' => self::SYSTEM,
             'messages' => [['role' => 'user', 'content' => [$block, ['type' => 'text', 'text' => 'Extract the data of this document.']]]],
             'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema]],
@@ -145,6 +167,7 @@ TXT;
             'totale' => isset($data['total']) ? round((float) $data['total'], 2) : null,
             'netto_a_pagare' => isset($data['payable']) ? round((float) $data['payable'], 2) : null,
             'proforma_citato' => $data['proforma_reference'] ?? null,
+            'cedente' => array_filter((array) ($data['supplier'] ?? []), fn ($v) => filled($v)),
             'affidabilita' => (float) ($data['confidence'] ?? 0),
         ];
     }

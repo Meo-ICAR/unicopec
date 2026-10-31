@@ -76,6 +76,42 @@ class BpmEvents
         ];
     }
 
+    /**
+     * `fornitore.iban_variato`: l'IBAN nelle fatture di un agente è diverso da quello in scheda o dalle fatture precedenti. Avvia in UnicoBPM la
+     * verifica (richiamata, documento della banca). Gli IBAN sono mascherati; `event_id` è per agente e nuovo IBAN, quindi un rinvio non avvia due processi.
+     *
+     * @param  array<string, mixed>  $state da IbanAlignment::state()
+     * @return array<string,mixed>
+     */
+    public static function ibanChanged(array $state, ?IncomingEmail $email = null): array
+    {
+        $mask = fn (?string $iban) => $iban === null ? null : substr($iban, 0, 2).str_repeat('*', max(0, strlen($iban) - 6)).substr($iban, -4);
+        $company = \Unico\Core\Models\Company::query()->find($state['company_id']);
+
+        return [
+            'event_id' => 'fornitore.iban_variato:'.$state['fornitore_id'].':'.substr(sha1((string) $state['iban_fattura']), 0, 10),
+            'event' => 'fornitore.iban_variato',
+            'source' => 'unicopec',
+            'subject_ref' => (string) $state['fornitore_id'],
+            'occurred_at' => now()->toIso8601String(),
+            'data' => [
+                'company_vat' => $company?->vat_number ?: $company?->piva,
+                'fornitore' => $state['nome'],
+                'fornitore_id' => $state['fornitore_id'],
+                'motivo' => $state['motivo'],
+                'iban_nuovo' => $mask($state['iban_fattura']),
+                'iban_scheda' => $mask($state['iban_scheda']),
+                'iban_precedenti' => implode(', ', array_map($mask, $state['iban_precedenti'])),
+                'email_id' => $email?->id ?? $state['email_id'],
+            ],
+        ];
+    }
+
+    public static function dispatchIbanChanged(array $state, ?IncomingEmail $email = null): void
+    {
+        SendBpmEvent::dispatch(self::ibanChanged($state, $email), $email?->id);
+    }
+
     public static function dispatchReceived(IncomingEmail $email, ?Classification $classification = null): void
     {
         if (self::skips($email)) {

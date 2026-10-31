@@ -46,7 +46,8 @@ class IncomingEmailForm
                     TextInput::make('from_name')->label('Mittente')->disabled(),
                     TextInput::make('received_at')->label('Ricevuta il')->disabled(),
                     TextInput::make('mailAccount.email_address')->label('Casella')->disabled()->formatStateUsing(fn ($record) => $record?->mailAccount?->email_address),
-                    Textarea::make('body_text')->label('Testo')->rows(10)->disabled()->columnSpanFull(),
+                    Textarea::make('body_text')->label('Testo')->rows(10)->disabled()->dehydrated(false)->columnSpanFull()
+                        ->formatStateUsing(fn ($state, $record) => $record?->readableBody() ?: $state),
                 ]),
         ]);
     }

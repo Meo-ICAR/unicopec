@@ -17,6 +17,7 @@ class PecChecks
         return [
             'pec:non-smistate' => 'PEC ricevute da oltre 24 ore e non ancora assegnate a un referente.',
             'pec:non-lette' => 'PEC ricevute da oltre 3 giorni e ancora da leggere.',
+            'fornitori:iban-non-allineati' => 'Agenti il cui IBAN in fattura non coincide con la scheda o non è stato verificato: finché non si allinea, il contabile viene avvisato ogni giorno.',
             'caselle:non-sincronizzate' => 'Caselle attive mai lette o ferme da oltre 24 ore (password scaduta o server irraggiungibile).',
         ];
     }
@@ -33,6 +34,7 @@ class PecChecks
                 self::messages()->where('is_read', false)->where('received_at', '<', now()->subDays(3)),
                 warningFrom: 1, alertFrom: 10, label: 'PEC non lette da oltre 3 giorni'
             ),
+            'fornitori:iban-non-allineati' => self::ibanNotAligned(),
             'caselle:non-sincronizzate' => self::staleAccounts(),
             default => null,
         };
@@ -66,6 +68,27 @@ class PecChecks
             'value' => $stale->count(),
             'severity' => $stale->isEmpty() ? 'ok' : 'alert',
             'details' => $stale->isEmpty() ? null : 'Ferme: '.$stale->implode(', '),
+        ];
+    }
+
+    /** Gradi: regular da subito, warning dopo 3 giorni, alert dopo 7 (o subito se l'IBAN è cambiato e non è italiano). @return array{value: int, severity: string, details: ?string} */
+    private static function ibanNotAligned(): array
+    {
+        $rows = app(\App\Services\Mail\IbanAlignment::class)->pending();
+
+        if ($rows->isEmpty()) {
+            return ['value' => 0, 'severity' => 'ok', 'details' => null];
+        }
+
+        $worst = $rows->max('giorni');
+        $foreign = $rows->contains(fn ($r) => $r['motivo'] === \App\Services\Mail\IbanAlignment::CHANGED && ! str_starts_with((string) $r['iban_fattura'], 'IT'));
+        $labels = [\App\Services\Mail\IbanAlignment::MISSING => 'IBAN non in scheda', \App\Services\Mail\IbanAlignment::CHANGED => 'IBAN variato', \App\Services\Mail\IbanAlignment::UNVERIFIED => 'IBAN da verificare'];
+
+        return [
+            'value' => $rows->count(),
+            'severity' => $foreign || $worst >= 7 ? 'alert' : ($worst >= 3 ? 'warning' : 'regular'),
+            // Solo nomi e motivo: gli IBAN interi non viaggiano nelle email.
+            'details' => $rows->map(fn ($r) => "{$r['nome']} ({$labels[$r['motivo']]}, da {$r['giorni']} giorni, ...".substr((string) $r['iban_fattura'], -4).')')->implode('; '),
         ];
     }
 }

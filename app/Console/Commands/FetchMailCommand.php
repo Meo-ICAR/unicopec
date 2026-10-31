@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\IncomingEmail;
 use App\Models\MailAccount;
+use App\Models\SenderBlacklist;
+use App\Services\Mail\IbanAlignment;
 use App\Services\Mail\ImapClientFactory;
 use App\Services\Mail\PecEnvelope;
 use App\Services\Mail\ProducerDocuments;
@@ -65,7 +67,8 @@ class FetchMailCommand extends Command
         // leaveUnread: nessuna modifica ai flag sul server.
         $messages = $client->getFolder('INBOX')->messages()->since($since)->leaveUnread()->get();
 
-        $imported = $duplicates = 0;
+        $imported = $duplicates = $excluded = 0;
+        $blacklist = SenderBlacklist::patternsFor($account->company_id);
         $limit = (int) $this->option('limit');
 
         foreach ($messages as $message) {
@@ -84,6 +87,14 @@ class FetchMailCommand extends Command
 
             $envelopeData = $envelope->open($message);
             $busta = $message->getFrom()[0] ?? null;
+
+            // Mittenti in lista nera (newsletter, social...): non si importano. In una PEC si guarda anche il mittente vero, non solo il gestore.
+            if (SenderBlacklist::matches($blacklist, $envelopeData['from_email'] ?? null) || SenderBlacklist::matches($blacklist, $busta->mail ?? null)) {
+                $excluded++;
+
+                continue;
+            }
+
             $isPec = $envelopeData['pec_type'] !== null;
 
             $this->line(sprintf(
@@ -135,14 +146,16 @@ class FetchMailCommand extends Command
             $account->forceFill(['last_synced_at' => now()])->save();
         }
 
-        $this->info("#{$account->id} {$account->email_address}: nuove {$imported}, già presenti {$duplicates}".($this->option('dry-run') ? ' (dry-run)' : ''));
+        $this->info("#{$account->id} {$account->email_address}: nuove {$imported}, già presenti {$duplicates}, escluse dalla lista nera {$excluded}".($this->option('dry-run') ? ' (dry-run)' : ''));
     }
 
     /** Gli allegati di un produttore (agente, collaboratore) entrano anche tra i suoi documenti nel core; un errore non ferma lo scaricamento. */
     private function archiveForProducer(IncomingEmail $email): void
     {
         try {
-            app(ProducerDocuments::class)->store($email);
+            if (app(ProducerDocuments::class)->store($email)->isNotEmpty() && filled(config('pec.ai.key'))) {
+                app(IbanAlignment::class)->afterInvoices($email);
+            }
         } catch (\Throwable $e) {
             Log::warning('Allegati non archiviati tra i documenti del produttore', ['incoming_email_id' => $email->id, 'error' => mb_substr($e->getMessage(), 0, 200)]);
         }
