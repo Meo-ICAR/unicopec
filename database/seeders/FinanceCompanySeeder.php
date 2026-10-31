@@ -10,10 +10,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Dotazione di una società di tipo FINANCE (mediazione creditizia): funzioni aziendali, registri di protocollo
- * collegati alle funzioni e regole di classificazione del settore. Si applica a Races Finance (che ha già il suo
- * organigramma, quindi i dipendenti non si toccano) e alla società dimostrativa Finance Demo (che ha anche un organigramma di prova).
- * Si può rilanciare: non duplica nulla.
+ * Dotazione di Races Finance (società di tipo FINANCE, mediazione creditizia): funzioni aziendali mancanti, registri di protocollo
+ * collegati alle funzioni e regole di classificazione del settore. I dipendenti e le funzioni già esistenti non si toccano.
+ * Si può rilanciare: non duplica nulla. Va bene anche in produzione; la società dimostrativa è in FinanceDemoCompanySeeder.
  *
  *   php artisan db:seed --class=FinanceCompanySeeder
  */
@@ -85,6 +84,14 @@ class FinanceCompanySeeder extends Seeder
             } else {
                 $this->command?->warn('Races Finance non trovata: saltata.');
             }
+        });
+    }
+
+    /** Società dimostrativa con organigramma di prova: solo per sviluppo (vedi FinanceDemoCompanySeeder). */
+    public function demo(): void
+    {
+        DB::transaction(function () {
+            $this->roles();
 
             $demo = Company::query()->updateOrCreate(
                 ['vat_number' => '00000000000'],
@@ -112,13 +119,15 @@ class FinanceCompanySeeder extends Seeder
         $this->rules($company);
     }
 
+    /** Crea solo le funzioni che mancano: quelle esistenti (con i loro codici e la gerarchia) non si toccano mai. */
     private function roles(): void
     {
         foreach (self::ROLES as [$code, $name, $managedBy]) {
-            DB::table('employee_types')->updateOrInsert(
-                ['name' => $name],
-                ['code' => $code, 'managed_by_code' => $managedBy, 'created_at' => now(), 'updated_at' => now()],
-            );
+            if (DB::table('employee_types')->where('name', $name)->exists()) {
+                continue;
+            }
+
+            DB::table('employee_types')->insert(['name' => $name, 'code' => $code, 'managed_by_code' => $managedBy, 'created_at' => now(), 'updated_at' => now()]);
         }
     }
 

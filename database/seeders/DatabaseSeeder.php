@@ -19,6 +19,11 @@ class DatabaseSeeder extends Seeder
 
         $this->call(FinanceCompanySeeder::class);
 
+        // Solo sviluppo: società dimostrativa con organigramma di prova.
+        if (! app()->isProduction()) {
+            $this->call(FinanceDemoCompanySeeder::class);
+        }
+
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
