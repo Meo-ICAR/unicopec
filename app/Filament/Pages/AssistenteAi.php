@@ -8,6 +8,7 @@ use App\Neuron\ManualAssistantAgent;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
 use NeuronAI\Chat\Messages\UserMessage;
 
@@ -42,6 +43,11 @@ class AssistenteAi extends Page
         $this->question = '';
 
         try {
+            // Se l'indice dei manuali non esiste ancora (primo uso dopo un'installazione) lo crea il web server stesso.
+            if (! file_exists(storage_path('app/neuron/manual/manual.store'))) {
+                Artisan::call('manual:sync');
+            }
+
             $reply = (string) ManualAssistantAgent::make()->chat(new UserMessage($question))->getMessage()->getContent();
         } catch (\Throwable $e) {
             $reply = 'Non riesco a rispondere in questo momento: '.mb_substr($e->getMessage(), 0, 200);
