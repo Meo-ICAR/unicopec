@@ -6,6 +6,7 @@ use App\Enums\EmailCategory;
 use App\Models\EmailEvent;
 use App\Models\Employee;
 use App\Models\IncomingEmail;
+use App\Services\Mail\EmailAnomalies;
 use App\Services\Mail\EmailClassifier;
 use App\Services\Mail\EmailForwarder;
 use App\Services\Mail\EmailHandover;
@@ -22,6 +23,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -47,13 +49,13 @@ class IncomingEmailsTable
                 TextColumn::make('related.name')->label('Smistata a')->placeholder('—')->searchable(),
                 TextColumn::make('outcome')
                     ->label('Esito')
-                    ->sortable(false)
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw(EmailAnomalies::outcomeSql().' '.$direction))
                     ->badge()
                     ->state(fn (IncomingEmail $record) => $record->outcome()['label'])
                     ->color(fn (IncomingEmail $record) => $record->outcome()['color']),
                 TextColumn::make('anomalies')
                     ->label('Anomalie')
-                    ->sortable(false)
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy(EmailAnomalies::scope(IncomingEmail::query()->withoutGlobalScopes()->from('incoming_emails as ie')->selectRaw('count(*)')->whereColumn('ie.id', 'incoming_emails.id')), $direction))
                     ->badge()
                     ->state(fn (IncomingEmail $record) => count($record->anomalies()) ?: null)
                     ->color('danger')
@@ -77,6 +79,14 @@ class IncomingEmailsTable
                 Filter::make('inoltrate')->label('Inoltrate al referente')->query(fn (Builder $query) => $query->whereHas('events', fn ($e) => $e->where('kind', EmailEvent::FORWARDED)->whereIn('status', ['ok', 'warning']))),
                 Filter::make('in_attesa')->label('In attesa di presa in carico')->query(fn (Builder $query) => $query->whereNotNull('awaiting_since')->whereNull('taken_at')),
                 Filter::make('processo_bpm')->label('Con processo BPM')->query(fn (Builder $query) => $query->whereHas('events', fn ($e) => $e->where('kind', EmailEvent::BPM_EVENT)->where('status', 'ok'))),
+                SelectFilter::make('outcome')->label('Esito')->multiple()->options(EmailAnomalies::outcomeLabels())
+                    ->query(fn (Builder $query, array $data) => filled($data['values'] ?? null) ? $query->whereRaw('('.EmailAnomalies::outcomeSql().') in ('.collect($data['values'])->map(fn ($v) => "'".str_replace("'", '', $v)."'")->implode(',').')') : $query),
+                Filter::make('ricevuta')->label('Periodo di ricezione')
+                    ->schema([DatePicker::make('dal')->label('Dal'), DatePicker::make('al')->label('Al')])
+                    ->query(fn (Builder $query, array $data) => $query->when($data['dal'] ?? null, fn ($q, $d) => $q->whereDate('received_at', '>=', $d))->when($data['al'] ?? null, fn ($q, $d) => $q->whereDate('received_at', '<=', $d))),
+                SelectFilter::make('related_id')->label('Smistata a')->searchable()
+                    ->options(fn () => Employee::query()->where('company_id', app(EmailRouter::class)->orgCompanyId(Filament::getTenant()?->getKey()))->orderBy('name')->pluck('name', 'id')->all())
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null) ? $query->where('related_type', 'employee')->where('related_id', $data['value']) : $query),
                 SelectFilter::make('classification')->label('Classificazione')->options(EmailCategory::options()),
                 SelectFilter::make('company_id')->label('Società')->relationship('company', 'name')->visible(! Filament::hasTenancy()),
                 SelectFilter::make('mail_account_id')->label('Casella')->relationship('mailAccount', 'email_address'),

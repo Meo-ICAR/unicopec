@@ -118,6 +118,52 @@ class EmailAnomalies
             return ['label' => 'Assegnata, in attesa di BPM', 'color' => 'info'];
         }
 
-        return ['label' => '—', 'color' => 'gray'];
+        return match (true) {
+            $email->classification === null => ['label' => 'Da classificare', 'color' => 'gray'],
+            $email->classification === EmailCategory::NonRilevante->value => ['label' => 'Non rilevante', 'color' => 'gray'],
+            default => ['label' => 'Da smistare', 'color' => 'warning'],
+        };
+    }
+
+    /** @return array<string, string> codice => etichetta, nell'ordine in cui si valutano (il primo che vale decide) */
+    public static function outcomeLabels(): array
+    {
+        return [
+            'ricevuta_gestore' => 'Ricevuta del gestore',
+            'presa_in_carico' => 'Presa in carico',
+            'in_attesa' => 'In attesa di presa in carico',
+            'bpm_avviato' => 'Processo BPM avviato',
+            'inoltrata' => 'Inoltrata al referente',
+            'inoltro_simulato' => 'Inoltro simulato',
+            'inoltro_fallito' => 'Inoltro non riuscito',
+            'assegnata' => 'Assegnata, in attesa di BPM',
+            'da_classificare' => 'Da classificare',
+            'non_rilevante' => 'Non rilevante',
+            'da_smistare' => 'Da smistare',
+        ];
+    }
+
+    /**
+     * Lo stesso esito di `outcome()` come espressione SQL (codice di `outcomeLabels()`), per ordinare e filtrare la tabella senza caricare i record.
+     * Va tenuta allineata a `outcome()`.
+     */
+    public static function outcomeSql(): string
+    {
+        $event = fn (string $where) => "exists (select 1 from email_events ev where ev.incoming_email_id = incoming_emails.id and ev.kind = '".'%s'."' and {$where})";
+        $bpm = sprintf($event("coalesce(json_extract(ev.meta, '\$.started'), 0) > 0"), EmailEvent::BPM_EVENT);
+        $lastForward = "(select ev.status from email_events ev where ev.incoming_email_id = incoming_emails.id and ev.kind = '".EmailEvent::FORWARDED."' order by ev.id desc limit 1)";
+
+        return "case
+            when incoming_emails.classification = '".EmailCategory::ProviderNotification->value."' then 'ricevuta_gestore'
+            when incoming_emails.taken_at is not null then 'presa_in_carico'
+            when incoming_emails.awaiting_since is not null then 'in_attesa'
+            when {$bpm} then 'bpm_avviato'
+            when {$lastForward} = 'ok' then 'inoltrata'
+            when {$lastForward} = 'warning' then 'inoltro_simulato'
+            when {$lastForward} is not null then 'inoltro_fallito'
+            when incoming_emails.related_id is not null then 'assegnata'
+            when incoming_emails.classification is null then 'da_classificare'
+            when incoming_emails.classification = '".EmailCategory::NonRilevante->value."' then 'non_rilevante'
+            else 'da_smistare' end";
     }
 }
