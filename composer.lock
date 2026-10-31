@@ -4169,7 +4169,7 @@
             "dist": {
                 "type": "path",
                 "url": "../unico-core",
-                "reference": "9a309af243d56d8d498c4d7d795816eb15a8d6e6"
+                "reference": "5c3efdef3ca70119b3c0ce013fc29700dc5bc34e"
             },
             "require": {
                 "filament/filament": "^5.10",

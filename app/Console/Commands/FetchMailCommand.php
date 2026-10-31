@@ -14,6 +14,7 @@ class FetchMailCommand extends Command
 {
     protected $signature = 'mail:fetch
         {account? : ID della casella (se omesso, tutte quelle attive)}
+        {--company= : ID della società (se omesso, tutte)}
         {--limit=50 : Massimo di email nuove importate per casella}
         {--days= : Quanti giorni indietro leggere (default: dall\'ultima sincronizzazione, o 30)}
         {--dry-run : Legge e mostra senza salvare}';
@@ -25,6 +26,7 @@ class FetchMailCommand extends Command
         $accounts = MailAccount::query()
             ->where('is_active', true)
             ->when($this->argument('account'), fn ($q, $id) => $q->whereKey($id))
+            ->when($this->option('company') !== null, fn ($q) => $q->where('company_id', (int) $this->option('company')))
             ->get();
 
         if ($accounts->isEmpty()) {
