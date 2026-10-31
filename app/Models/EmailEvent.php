@@ -24,6 +24,8 @@ class EmailEvent extends Model
 
     public const ARCHIVED = 'archived';
 
+    public const INTENT = 'intent';
+
     protected $guarded = ['id'];
 
     protected function casts(): array

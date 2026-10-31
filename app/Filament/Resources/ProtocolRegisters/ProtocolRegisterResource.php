@@ -26,6 +26,8 @@ class ProtocolRegisterResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Registri di protocollo';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
+
     protected static ?int $navigationSort = 5;
 
     public static function canAccess(): bool

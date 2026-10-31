@@ -29,6 +29,8 @@ class ClassificationRuleResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Regole di smistamento';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
+
     protected static ?int $navigationSort = 4;
 
     // Le regole globali non hanno società: lo scoping automatico del tenant le nasconderebbe, quindi il filtro è esplicito.

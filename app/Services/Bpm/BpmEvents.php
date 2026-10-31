@@ -43,6 +43,34 @@ class BpmEvents
         ];
     }
 
+    /**
+     * `email.richiesta`: l'AI ha riconosciuto una richiesta operativa nell'email (es. `rettifica_iban`). Come per gli altri eventi non porta il corpo:
+     * l'IBAN è mascherato (paese e ultime 4 cifre), il valore completo si legge con GET /api/incoming-emails/{id}. `controlli` elenca i segnali di rischio
+     * calcolati dal codice; UnicoBPM deve trattare una richiesta con controlli come «da verificare», mai come automatica.
+     *
+     * @param  array{intent: string, confidence: float, summary: string, entities: array<string, mixed>, flags: array<int, string>}  $intent
+     * @return array<string,mixed>
+     */
+    public static function request(IncomingEmail $email, array $intent): array
+    {
+        $entities = $intent['entities'];
+
+        if (isset($entities['iban'])) {
+            $entities['iban'] = substr($entities['iban'], 0, 2).str_repeat('*', max(0, strlen($entities['iban']) - 6)).substr($entities['iban'], -4);
+        }
+
+        return self::base($email, 'email.richiesta') + [
+            'data' => self::data($email) + [
+                'richiesta' => $intent['intent'],
+                'sintesi' => $intent['summary'],
+                'affidabilita' => $intent['confidence'],
+                'dati' => $entities,
+                'controlli' => $intent['flags'],
+                'verifica_richiesta' => $intent['flags'] !== [],
+            ],
+        ];
+    }
+
     public static function dispatchReceived(IncomingEmail $email, ?Classification $classification = null): void
     {
         if (self::skips($email)) {

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\IncomingEmails;
 
 use App\Filament\Resources\IncomingEmails\Pages\EditIncomingEmail;
 use App\Filament\Resources\IncomingEmails\Pages\ListIncomingEmails;
+use App\Filament\Resources\IncomingEmails\RelationManagers\AttachmentsRelationManager;
 use App\Filament\Resources\IncomingEmails\RelationManagers\EventsRelationManager;
 use App\Filament\Resources\IncomingEmails\RelationManagers\ProtocolsRelationManager;
 use App\Filament\Resources\IncomingEmails\Schemas\IncomingEmailForm;
@@ -61,7 +62,7 @@ class IncomingEmailResource extends Resource
 
     public static function getRelations(): array
     {
-        return [ProtocolsRelationManager::class, EventsRelationManager::class];
+        return [AttachmentsRelationManager::class, ProtocolsRelationManager::class, EventsRelationManager::class];
     }
 
     public static function getPages(): array

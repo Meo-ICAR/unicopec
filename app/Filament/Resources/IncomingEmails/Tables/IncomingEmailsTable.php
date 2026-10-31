@@ -47,11 +47,13 @@ class IncomingEmailsTable
                 TextColumn::make('related.name')->label('Smistata a')->placeholder('—')->searchable(),
                 TextColumn::make('outcome')
                     ->label('Esito')
+                    ->sortable(false)
                     ->badge()
                     ->state(fn (IncomingEmail $record) => $record->outcome()['label'])
                     ->color(fn (IncomingEmail $record) => $record->outcome()['color']),
                 TextColumn::make('anomalies')
                     ->label('Anomalie')
+                    ->sortable(false)
                     ->badge()
                     ->state(fn (IncomingEmail $record) => count($record->anomalies()) ?: null)
                     ->color('danger')

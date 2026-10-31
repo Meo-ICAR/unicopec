@@ -41,6 +41,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->tenantMiddleware([RememberLastTenant::class], isPersistent: true)
             ->navigationGroups([
+                NavigationGroup::make('Configurazione'),
+                NavigationGroup::make('Settings'),
                 NavigationGroup::make('Manuali')->collapsible()->collapsed(),
             ])
             ->navigationItems([

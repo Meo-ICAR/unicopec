@@ -17,7 +17,7 @@ class ProtocolRegistersTable
             ->columns([
                 TextColumn::make('code')->label('Sigla')->sortable()->searchable(),
                 TextColumn::make('name')->label('Nome')->searchable(),
-                TextColumn::make('roles')->label('Funzioni')->state(fn (ProtocolRegister $record) => $record->roleNames())->badge(),
+                TextColumn::make('roles')->label('Funzioni')->sortable(false)->state(fn (ProtocolRegister $record) => $record->roleNames())->badge(),
                 TextColumn::make('protocols_count')->label('Protocolli')->counts('protocols'),
                 IconColumn::make('is_active')->label('Attivo')->boolean(),
             ])

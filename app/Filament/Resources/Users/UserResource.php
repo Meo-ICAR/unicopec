@@ -32,6 +32,8 @@ class UserResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Utenti';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Configurazione';
+
     protected static ?int $navigationSort = 3;
 
     public static function canAccess(): bool

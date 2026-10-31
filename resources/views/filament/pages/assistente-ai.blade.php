@@ -29,6 +29,7 @@
             <x-filament::button type="submit" wire:loading.attr="disabled" wire:target="ask">Invia</x-filament::button>
             @if ($messages)
                 <x-filament::button color="gray" wire:click="nuovaConversazione">Nuova conversazione</x-filament::button>
+                <x-filament::button color="warning" icon="heroicon-o-lifebuoy" wire:click="escalate" wire:confirm="Inviare al supporto l'ultima domanda e la risposta ricevuta? Tu sarai in copia.">Contatta il supporto</x-filament::button>
             @endif
         </form>
     </div>

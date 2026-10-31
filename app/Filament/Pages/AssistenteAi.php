@@ -2,10 +2,14 @@
 
 namespace App\Filament\Pages;
 
-use App\Services\Assistant\PecAssistant;
+use App\Mail\AssistantEscalationMail;
+use App\Models\User;
+use App\Neuron\ManualAssistantAgent;
 use BackedEnum;
-use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Illuminate\Support\Facades\Mail;
+use NeuronAI\Chat\Messages\UserMessage;
 
 class AssistenteAi extends Page
 {
@@ -38,7 +42,7 @@ class AssistenteAi extends Page
         $this->question = '';
 
         try {
-            $reply = app(PecAssistant::class)->answer($this->messages, Filament::getTenant());
+            $reply = (string) ManualAssistantAgent::make()->chat(new UserMessage($question))->getMessage()->getContent();
         } catch (\Throwable $e) {
             $reply = 'Non riesco a rispondere in questo momento: '.mb_substr($e->getMessage(), 0, 200);
         }
@@ -49,5 +53,32 @@ class AssistenteAi extends Page
     public function nuovaConversazione(): void
     {
         $this->messages = [];
+    }
+
+    /** Inoltra al supporto l'ultima domanda con la risposta ricevuta; l'utente è in copia. */
+    public function escalate(): void
+    {
+        $user = auth()->user();
+        $count = count($this->messages);
+
+        if (! $user instanceof User || $count < 2) {
+            return;
+        }
+
+        $code = now()->format('Y-m-d H:i');
+
+        try {
+            Mail::to(config('pec.support_email'))->cc($user->email)->send(new AssistantEscalationMail(
+                code: $code,
+                user: $user,
+                prompt: $this->messages[$count - 2]['content'],
+                answer: $this->messages[$count - 1]['content'],
+                error: null,
+            ));
+
+            Notification::make()->title("Richiesta inoltrata al supporto ({$code})")->body('Riceverai una copia dell\'email.')->success()->send();
+        } catch (\Throwable $e) {
+            Notification::make()->title('Impossibile contattare il supporto')->body(mb_substr($e->getMessage(), 0, 200))->danger()->send();
+        }
     }
 }

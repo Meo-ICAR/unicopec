@@ -17,7 +17,7 @@ class EditClassificationRule extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('prova')->label('Prova la regola')->icon('heroicon-o-beaker')->color('gray')
+            Action::make('prova')->label('Prova la regola')->icon('heroicon-o-beaker')->iconButton()->tooltip('Prova la regola')->color('gray')
                 ->modalHeading('Email che corrispondono (con i valori nel modulo, non ancora salvati)')
                 ->modalSubmitAction(false)->modalCancelActionLabel('Chiudi')
                 ->modalContent(function () {

@@ -28,6 +28,8 @@ class CompanyResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Società';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Configurazione';
+
     protected static ?int $navigationSort = 1;
 
     // L'anagrafica delle società è globale: non si filtra sulla società corrente.

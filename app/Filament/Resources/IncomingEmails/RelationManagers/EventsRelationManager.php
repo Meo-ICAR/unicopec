@@ -6,6 +6,8 @@ use App\Models\EmailEvent;
 use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 /** Cronologia di un'email: classificazione, assegnazione, eventi verso UnicoBPM, inoltri e anomalie. */
@@ -41,6 +43,20 @@ class EventsRelationManager extends RelationManager
                     ->formatStateUsing(fn (string $state) => match ($state) { 'ok' => 'OK', 'warning' => 'Attenzione', 'error' => 'Errore', 'resolved' => 'Risolta', default => $state })
                     ->color(fn (string $state) => match ($state) { 'ok', 'resolved' => 'success', 'warning' => 'warning', 'error' => 'danger', default => 'gray' }),
                 TextColumn::make('message')->label('Dettaglio')->wrap(),
+            ])
+            ->filters([
+                SelectFilter::make('kind')->label('Passo')->multiple()->options([
+                    EmailEvent::CLASSIFIED => 'Classificazione',
+                    EmailEvent::ASSIGNED => 'Assegnazione',
+                    EmailEvent::BPM_EVENT => 'UnicoBPM',
+                    EmailEvent::FORWARDED => 'Inoltro',
+                    EmailEvent::ANOMALY => 'Anomalia',
+                    EmailEvent::TAKEN => 'Presa in carico',
+                    EmailEvent::PROTOCOLLED => 'Protocollo',
+                ]),
+                SelectFilter::make('status')->label('Esito')->multiple()->options(['ok' => 'OK', 'warning' => 'Attenzione', 'error' => 'Errore', 'resolved' => 'Risolta']),
+                Filter::make('anomalie_aperte')->label('Anomalie aperte')->query(fn ($query) => $query->where('kind', EmailEvent::ANOMALY)->where('status', 'error')),
+                Filter::make('problemi')->label('Solo warning ed errori')->query(fn ($query) => $query->whereIn('status', ['warning', 'error'])),
             ])
             ->recordActions([
                 Action::make('risolvi')

@@ -23,6 +23,18 @@ return [
         'max_wait_days' => (int) env('PEC_ARCHIVE_MAX_WAIT_DAYS', 7),
     ],
 
+    // Destinatario delle richieste che l'assistente AI non risolve (l'utente è in copia).
+    'support_email' => env('PEC_SUPPORT_EMAIL', 'info@hassisto.com'),
+
+    // Catalogo chiuso delle richieste che l'AI riconosce in un'email (mail:intent). Il codice è anche il `richiesta` dell'evento email.richiesta per UnicoBPM.
+    'intents' => [
+        'rettifica_iban' => 'Il mittente comunica un IBAN nuovo o cambiato per ricevere i pagamenti (compensi, rimborsi).',
+        'rettifica_proforma' => 'Il mittente segnala un errore in un proforma e ne chiede la modifica (importi o pratiche mancanti, dati errati).',
+        'chiarimenti_proforma' => 'Il mittente chiede informazioni su un proforma o su un pagamento (stato, importo, trattenute) senza chiedere modifiche.',
+        'fattura_ricevuta' => 'Un fornitore o un agente invia una fattura o un documento contabile.',
+        'nessuna' => 'Nessuna richiesta operativa: ringraziamenti, conferme, newsletter, risposte interne.',
+    ],
+
     'ai' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5-5'),

@@ -14,6 +14,7 @@
         "laravel/socialite": "^5.28",
         "laravel/tinker": "^3.0",
         "meo-icar/unico-core": "*@dev",
+        "neuron-core/neuron-ai": "^3.16",
         "owenvoke/blade-fontawesome": "^3.3",
         "socialiteproviders/google": "^4.1",
         "socialiteproviders/microsoft": "^4.9",

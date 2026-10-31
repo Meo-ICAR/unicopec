@@ -25,6 +25,8 @@ class ProtocolResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Protocolli';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Settings';
+
     protected static ?int $navigationSort = 6;
 
     // Il protocollo non ha la società: si risale dal registro.
