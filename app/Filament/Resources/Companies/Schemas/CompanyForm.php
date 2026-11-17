@@ -36,6 +36,8 @@ class CompanyForm
                     TextInput::make('email')->label('Email')->email()->maxLength(255),
                     TextInput::make('pec')->label('PEC')->email()->maxLength(255),
                     TextInput::make('dpo_email')->label('Email DPO / RPD')->email()->maxLength(255),
+                    TextInput::make('unicopec_support_email')->label('Email assistenza UnicoPEC')->email()->maxLength(255)
+                        ->helperText('A questo indirizzo l\'Assistente AI inoltra le richieste di escalation. Vuoto = indirizzo predefinito dell\'installazione.'),
                     TextInput::make('email_it')->label('Email referente IT')->email()->maxLength(255),
                     TextInput::make('referee')->label('Referente')->maxLength(255),
                     TextInput::make('email_referee')->label('Email referente')->email()->maxLength(255),

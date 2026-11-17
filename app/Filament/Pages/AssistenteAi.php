@@ -74,7 +74,7 @@ class AssistenteAi extends Page
         $code = now()->format('Y-m-d H:i');
 
         try {
-            Mail::to(config('pec.support_email'))->cc($user->email)->send(new AssistantEscalationMail(
+            Mail::to($user->company?->unicopec_support_email ?: config('pec.support_email'))->cc($user->email)->send(new AssistantEscalationMail(
                 code: $code,
                 user: $user,
                 prompt: $this->messages[$count - 2]['content'],
