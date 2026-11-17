@@ -69,11 +69,11 @@ class MailAccountsTable
     public static function connectMicrosoftAction(): Action
     {
         return Action::make('collega_microsoft')
-            ->label(fn (MailAccount $record) => $record->auth_type === 'oauth2' && $record->provider === 'microsoft' ? 'Ricollega account Microsoft' : 'Collega account Microsoft')
+            ->label(fn (?MailAccount $record) => $record?->auth_type === 'oauth2' && $record?->provider === 'microsoft' ? 'Ricollega account Microsoft' : 'Collega account Microsoft')
             ->icon('heroicon-o-link')
             ->color('info')
-            ->visible(fn (MailAccount $record) => $record->provider === 'microsoft' || str_contains((string) $record->imap_host, 'office365') || str_contains((string) $record->imap_host, 'outlook'))
-            ->url(fn (MailAccount $record) => route('mail-oauth.microsoft.redirect', $record));
+            ->visible(fn (?MailAccount $record) => $record?->provider === 'microsoft' || str_contains((string) $record?->imap_host, 'office365') || str_contains((string) $record?->imap_host, 'outlook'))
+            ->url(fn (?MailAccount $record) => $record ? route('mail-oauth.microsoft.redirect', $record) : null);
     }
 
     /** Mostra il link di consenso da inviare all'amministratore del tenant Microsoft 365 che ospita la casella. */
@@ -83,7 +83,7 @@ class MailAccountsTable
             ->label('Link consenso amministratore')
             ->icon('heroicon-o-shield-check')
             ->color('gray')
-            ->visible(fn (MailAccount $record) => $record->provider === 'microsoft' || str_contains((string) $record->imap_host, 'office365') || str_contains((string) $record->imap_host, 'outlook'))
+            ->visible(fn (?MailAccount $record) => $record?->provider === 'microsoft' || str_contains((string) $record?->imap_host, 'office365') || str_contains((string) $record?->imap_host, 'outlook'))
             ->action(function (): void {
                 $url = app(MicrosoftMailOAuth::class)->adminConsentUrl();
 

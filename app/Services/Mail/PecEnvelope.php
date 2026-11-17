@@ -11,6 +11,9 @@ use Webklex\PHPIMAP\Message;
  */
 class PecEnvelope
 {
+    /** Livelli di PEC inoltrate in cui si scende al massimo. */
+    private const MAX_DEPTH = 4;
+
     /** Allegati tecnici della busta, non documenti del messaggio. */
     private const TECHNICAL = ['postacert.eml', 'daticert.xml', 'smime.p7s'];
 
@@ -28,7 +31,7 @@ class PecEnvelope
     /**
      * @return array{pec_type: ?string, from_email: ?string, from_name: ?string, subject: ?string, text: ?string, html: ?string, attachments: array<int, Attachment>}
      */
-    public function open(Message $message): array
+    public function open(Message $message, int $depth = 0): array
     {
         $receipt = strtolower(trim((string) $message->getHeader()?->get('x-ricevuta')));
         $transport = strtolower(trim((string) $message->getHeader()?->get('x-trasporto')));
@@ -42,7 +45,7 @@ class PecEnvelope
             $inner = $this->innerMessage($message);
 
             if ($inner) {
-                return $this->result('messaggio', $inner, $inner->getAttachments()->all(), $inner);
+                return $this->withForwarded($this->result('messaggio', $inner, $inner->getAttachments()->all(), $inner), $inner, $depth);
             }
         }
 
@@ -66,6 +69,47 @@ class PecEnvelope
                 fn (Attachment $a) => ! in_array(strtolower((string) $a->getName()), self::TECHNICAL, true),
             )),
         ];
+    }
+
+    /**
+     * PEC inoltrata come allegato (email.eml, a sua volta una busta PEC con il suo postacert.eml): il testo dell'inoltro è solo una riga,
+     * il corpo che interessa è nel messaggio originale. Si scende nei livelli e lo si accoda, con mittente e oggetto veri.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withForwarded(array $data, Message $message, int $depth): array
+    {
+        if ($depth >= self::MAX_DEPTH) {
+            return $data;
+        }
+
+        foreach ($message->getAttachments() as $attachment) {
+            $name = strtolower((string) $attachment->getName());
+
+            if (in_array($name, self::TECHNICAL, true) || ! (str_ends_with($name, '.eml') || str_contains(strtolower((string) $attachment->getMimeType()), 'rfc822'))) {
+                continue;
+            }
+
+            try {
+                $original = $this->open(Message::fromString($attachment->getContent()), $depth + 1);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if (blank($original['text']) && blank($original['html'])) {
+                continue;
+            }
+
+            $header = 'Da: '.($original['from_email'] ?? '?')."\nOggetto: ".($original['subject'] ?? '');
+            $text = $original['text'] ?? trim(html_entity_decode(strip_tags((string) preg_replace('~<(style|script)\b.*?</\1>|<br\s*/?>|</p>~is', "\n", (string) $original['html']))));
+
+            $data['text'] = trim(($data['text'] ?? '')."\n\n----- Messaggio inoltrato -----\n{$header}\n\n{$text}");
+            $data['html'] = ($data['html'] ?? '').'<hr><p><strong>Messaggio inoltrato</strong><br>Da: '.e($original['from_email'] ?? '?').'<br>Oggetto: '.e($original['subject'] ?? '').'</p>'
+                .($original['html'] ?? '<pre style="white-space:pre-wrap">'.e($original['text']).'</pre>');
+        }
+
+        return $data;
     }
 
     private function findPostacert(Message $message): ?Attachment
