@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\ExtractAttachmentText;
 use App\Models\IncomingEmail;
 use App\Models\MailAccount;
 use App\Models\SenderBlacklist;
@@ -9,6 +10,7 @@ use App\Services\Mail\IbanAlignment;
 use App\Services\Mail\ImapClientFactory;
 use App\Services\Mail\PecEnvelope;
 use App\Services\Mail\ProducerDocuments;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Webklex\PHPIMAP\Attribute;
@@ -170,7 +172,8 @@ class FetchMailCommand extends Command
 
             try {
                 file_put_contents($tmp, $attachment->getContent());
-                $email->addMedia($tmp)->usingFileName($name)->toMediaCollection(IncomingEmail::ATTACHMENTS);
+                $media = $email->addMedia($tmp)->usingFileName($name)->toMediaCollection(IncomingEmail::ATTACHMENTS);
+                ExtractAttachmentText::dispatch($media->id);
             } catch (\Throwable $e) {
                 Log::warning('Allegato email non archiviato', ['incoming_email_id' => $email->id, 'file' => $name, 'error' => $e->getMessage()]);
             } finally {
@@ -194,10 +197,10 @@ class FetchMailCommand extends Command
         return array_values(array_map(fn ($a) => ['email' => $a->mail ?? null, 'name' => ($a->personal ?? '') ?: null], $list));
     }
 
-    private function date(object $message): \Carbon\Carbon
+    private function date(object $message): Carbon
     {
         try {
-            return \Carbon\Carbon::parse((string) $message->getDate());
+            return Carbon::parse((string) $message->getDate());
         } catch (\Throwable) {
             return now();
         }
