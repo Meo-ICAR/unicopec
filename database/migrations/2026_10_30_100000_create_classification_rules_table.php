@@ -9,25 +9,34 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('classification_rules', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable()->index()->comment('Società a cui vale la regola; vuoto = tutte');
-            $table->string('name');
-            $table->unsignedInteger('priority')->default(100)->comment('Più basso vince');
-            $table->boolean('is_active')->default(true);
-            $table->string('category', 50)->comment('Valore di EmailCategory');
-            $table->string('sender_pattern', 500)->nullable();
-            $table->string('subject_pattern', 500)->nullable();
-            $table->string('body_pattern', 500)->nullable();
-            $table->string('operator', 3)->default('or')->comment('and | or tra le condizioni compilate');
-            $table->timestamps();
-        });
+        // Idempotente: le regole predefinite si inseriscono solo se la tabella nasce ora, per non duplicarle nelle installazioni che l'hanno già.
+        $created = ! Schema::hasTable('classification_rules');
 
-        Schema::table('incoming_emails', function (Blueprint $table) {
-            $table->unsignedBigInteger('classification_rule_id')->nullable()->comment('Regola che ha deciso la categoria');
-        });
+        if ($created) {
+            Schema::create('classification_rules', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('company_id')->nullable()->index()->comment('Società a cui vale la regola; vuoto = tutte');
+                $table->string('name');
+                $table->unsignedInteger('priority')->default(100)->comment('Più basso vince');
+                $table->boolean('is_active')->default(true);
+                $table->string('category', 50)->comment('Valore di EmailCategory');
+                $table->string('sender_pattern', 500)->nullable();
+                $table->string('subject_pattern', 500)->nullable();
+                $table->string('body_pattern', 500)->nullable();
+                $table->string('operator', 3)->default('or')->comment('and | or tra le condizioni compilate');
+                $table->timestamps();
+            });
+        }
 
-        $this->insertDefaults();
+        if (! Schema::hasColumn('incoming_emails', 'classification_rule_id')) {
+            Schema::table('incoming_emails', function (Blueprint $table) {
+                $table->unsignedBigInteger('classification_rule_id')->nullable()->comment('Regola che ha deciso la categoria');
+            });
+        }
+
+        if ($created) {
+            $this->insertDefaults();
+        }
     }
 
     /** Le tre regole che prima stavano nel codice (EmailClassifier::RULES). */

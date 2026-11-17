@@ -9,14 +9,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('sender_blacklists', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('company_id')->nullable()->index()->comment('Società a cui vale; vuoto = tutte');
-            $table->string('pattern')->comment('Indirizzo (mario@x.it), dominio (x.it, vale anche per i sottodomini) o jolly (*@news.*)');
-            $table->string('note')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('sender_blacklists')) {
+            Schema::create('sender_blacklists', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('company_id')->nullable()->index()->comment('Società a cui vale; vuoto = tutte');
+                $table->string('pattern')->comment('Indirizzo (mario@x.it), dominio (x.it, vale anche per i sottodomini) o jolly (*@news.*)');
+                $table->string('note')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
 
         $now = now();
         DB::table('sender_blacklists')->insert(collect([

@@ -8,11 +8,23 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempotente: la tabella è condivisa con la suite (unicosuite), si aggiunge solo ciò che manca.
         Schema::table('incoming_emails', function (Blueprint $table) {
-            $table->string('archive_status', 20)->nullable()->index()->comment('da_archiviare | archiviata | errore');
-            $table->string('archive_reference')->nullable()->comment('Identificativo dato dal servizio di archiviazione');
-            $table->timestamp('archived_at')->nullable();
-            $table->unsignedTinyInteger('archived_protocols')->default(0)->comment('Quanti protocolli conteneva l\'ultimo invio');
+            if (! Schema::hasColumn('incoming_emails', 'archive_status')) {
+                $table->string('archive_status', 20)->nullable()->index()->comment('da_archiviare | archiviata | errore');
+            }
+
+            if (! Schema::hasColumn('incoming_emails', 'archive_reference')) {
+                $table->string('archive_reference')->nullable()->comment('Identificativo dato dal servizio di archiviazione');
+            }
+
+            if (! Schema::hasColumn('incoming_emails', 'archived_at')) {
+                $table->timestamp('archived_at')->nullable();
+            }
+
+            if (! Schema::hasColumn('incoming_emails', 'archived_protocols')) {
+                $table->unsignedTinyInteger('archived_protocols')->default(0)->comment('Quanti protocolli conteneva l\'ultimo invio');
+            }
         });
     }
 
