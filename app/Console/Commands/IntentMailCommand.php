@@ -25,7 +25,7 @@ class IntentMailCommand extends Command
         $emails = IncomingEmail::query()->with(['company', 'mailAccount'])
             ->when($this->argument('email'), fn ($q, $id) => $q->whereKey($id))
             ->when($this->option('account'), fn ($q, $id) => $q->where('mail_account_id', $id))
-            ->when(! $this->argument('email'), fn ($q) => $q->where('classification', '!=', 'provider_notification')->orWhereNull('classification'))
+            ->when(! $this->argument('email'), fn ($q) => $q->where(fn ($q) => $q->where('classification', '!=', 'provider_notification')->orWhereNull('classification')))
             ->orderBy('received_at')->limit((int) $this->option('limit'))->get();
 
         foreach ($emails as $email) {

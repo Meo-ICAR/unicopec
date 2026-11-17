@@ -24,6 +24,10 @@ TXT;
     /** @return array{intent: string, confidence: float, summary: string, entities: array<string, mixed>, flags: array<int, string>} */
     public function extract(IncomingEmail $email): array
     {
+        if ($email->isProviderNotification()) {
+            return ['intent' => 'nessuna', 'confidence' => 1.0, 'summary' => 'Ricevuta o notifica automatica del gestore PEC: non inviata all\'AI.', 'entities' => [], 'flags' => []];
+        }
+
         $key = (string) config('pec.ai.key');
 
         if ($key === '') {

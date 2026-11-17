@@ -38,6 +38,10 @@ TXT;
     /** @return array{esito: string, proforma: ?float, fatture: array<int, array<string, mixed>>, dettaglio: string} */
     public function check(IncomingEmail $email): array
     {
+        if ($email->isProviderNotification()) {
+            return ['esito' => self::UNDETERMINED, 'proforma' => null, 'fatture' => [], 'dettaglio' => 'Ricevuta o notifica automatica del gestore PEC: non inviata all\'AI.'];
+        }
+
         $expected = self::proformaTotal((string) $email->subject);
         $invoices = [];
 

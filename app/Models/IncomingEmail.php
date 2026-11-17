@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EmailCategory;
 use App\Services\Mail\EmailAnomalies;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,12 @@ class IncomingEmail extends Model implements HasMedia
             'taken_at' => 'datetime',
             'awaiting_since' => 'datetime',
         ];
+    }
+
+    /** Ricevute e notifiche automatiche del gestore PEC (accettazione, consegna, errori): non hanno testo da analizzare e non vanno inviate all'AI. */
+    public function isProviderNotification(): bool
+    {
+        return $this->classification === EmailCategory::ProviderNotification->value;
     }
 
     public function registerMediaCollections(): void
