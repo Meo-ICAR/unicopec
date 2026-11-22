@@ -6,6 +6,7 @@ use App\Enums\EmailCategory;
 use App\Models\IncomingEmail;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Unico\Core\Ai\AnthropicClient;
 
 /**
  * Classifica un'email: prima le regole certe (nessuna chiamata AI, nessun costo), poi l'API Claude con risposta JSON validata da uno schema.
@@ -80,7 +81,7 @@ TXT;
             'additionalProperties' => false,
         ];
 
-        $response = Http::withHeaders(['x-api-key' => $key, 'anthropic-version' => '2023-06-01'])->timeout(60)->post('https://api.anthropic.com/v1/messages', [
+        $response = AnthropicClient::post($key, [
             'model' => config('pec.ai.model'),
             'max_tokens' => 600,
             'system' => self::SYSTEM."\n\nCategories:\n{$categories}".($forced ? "\n\nThe category is already decided: \"{$forced->value}\". Still fill every field." : ''),
@@ -89,7 +90,7 @@ TXT;
                 'content' => "Company receiving it: {$email->company?->name}\nFrom: {$email->from_name} <{$email->from_email}>\nSubject: {$email->subject}\nAttachments: ".($attachments ?: 'none')."\n\nBody:\n{$body}",
             ]],
             'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema]],
-        ]);
+        ], 'pec:email-classifier', 60);
 
         if ($response->failed()) {
             throw new RuntimeException('API Claude: HTTP '.$response->status().' '.mb_substr((string) $response->json('error.message'), 0, 200));

@@ -5,6 +5,7 @@ namespace App\Services\Mail;
 use App\Models\IncomingEmail;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Unico\Core\Ai\AnthropicClient;
 use Unico\Core\Models\Document;
 use Unico\Core\Models\DocumentType;
 
@@ -103,6 +104,20 @@ TXT;
         return $read;
     }
 
+    /** Word, Excel, OpenDocument...: l'API non li legge, si converte in Markdown con markitdown. @return array<string, mixed> */
+    private function markdownBlock(string $content, string $fileName, string $mime): array
+    {
+        $converter = \Unico\Core\Documents\MarkitdownConverter::make();
+        $name = $converter->supports($fileName) ? $fileName : \Unico\Core\Documents\MarkitdownConverter::nameForMime($mime);
+        $markdown = $name === null ? null : $converter->toMarkdown($content, $name);
+
+        if ($markdown === null) {
+            throw new RuntimeException("Formato non leggibile ({$mime}).");
+        }
+
+        return ['type' => 'text', 'text' => "Document content (converted to Markdown):\n\n".$markdown];
+    }
+
     /** @return array<string, mixed> */
     private function read(Document $document): array
     {
@@ -125,7 +140,7 @@ TXT;
             $mime === 'application/pdf' => ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => 'application/pdf', 'data' => base64_encode($content)]],
             in_array($mime, ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true) => ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => base64_encode($content)]],
             str_contains($mime, 'xml') || str_ends_with(strtolower((string) $media->file_name), '.xml') => ['type' => 'text', 'text' => mb_substr(strip_tags($content), 0, 12000)],
-            default => throw new RuntimeException("Formato non leggibile ({$mime})."),
+            default => $this->markdownBlock($content, (string) $media->file_name, $mime),
         };
 
         $number = ['type' => ['number', 'null']];
@@ -149,13 +164,13 @@ TXT;
             'additionalProperties' => false,
         ];
 
-        $response = Http::withHeaders(['x-api-key' => $key, 'anthropic-version' => '2023-06-01'])->timeout(90)->post('https://api.anthropic.com/v1/messages', [
+        $response = AnthropicClient::post($key, [
             'model' => config('pec.ai.model'),
             'max_tokens' => 900,
             'system' => self::SYSTEM,
             'messages' => [['role' => 'user', 'content' => [$block, ['type' => 'text', 'text' => 'Extract the data of this document.']]]],
             'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema]],
-        ]);
+        ], 'pec:proforma-checker', 90);
 
         if ($response->failed()) {
             throw new RuntimeException('API Claude: HTTP '.$response->status().' '.mb_substr((string) $response->json('error.message'), 0, 160));

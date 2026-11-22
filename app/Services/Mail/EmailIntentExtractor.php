@@ -5,6 +5,7 @@ namespace App\Services\Mail;
 use App\Models\IncomingEmail;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Unico\Core\Ai\AnthropicClient;
 
 /**
  * Capisce cosa chiede un'email, oltre all'argomento: sceglie una richiesta da un catalogo chiuso (config pec.intents) ed estrae i dati
@@ -54,13 +55,13 @@ TXT;
             'additionalProperties' => false,
         ];
 
-        $response = Http::withHeaders(['x-api-key' => $key, 'anthropic-version' => '2023-06-01'])->timeout(60)->post('https://api.anthropic.com/v1/messages', [
+        $response = AnthropicClient::post($key, [
             'model' => config('pec.ai.model'),
             'max_tokens' => 600,
             'system' => self::SYSTEM."\n\nIntents:\n{$list}",
             'messages' => [['role' => 'user', 'content' => "From: {$email->from_name} <{$email->from_email}>\nSubject: {$email->subject}\n\nBody:\n{$body}"]],
             'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema]],
-        ]);
+        ], 'pec:intent-extractor', 60);
 
         if ($response->failed()) {
             throw new RuntimeException('API Claude: HTTP '.$response->status().' '.mb_substr((string) $response->json('error.message'), 0, 200));

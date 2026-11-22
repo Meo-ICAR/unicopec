@@ -8,7 +8,7 @@ use App\Services\Assistant\PecAssistant;
 use Filament\Facades\Filament;
 use NeuronAI\Agent\SystemPrompt;
 use NeuronAI\Providers\AIProviderInterface;
-use NeuronAI\Providers\Anthropic\Anthropic;
+use Unico\Core\Ai\Neuron\RecordingAnthropic;
 use NeuronAI\RAG\Embeddings\EmbeddingsProviderInterface;
 use NeuronAI\RAG\RAG;
 use NeuronAI\RAG\VectorStore\FileVectorStore;
@@ -38,7 +38,7 @@ class ManualAssistantAgent extends RAG
             throw new RuntimeException('Chiave API Anthropic mancante: imposta ANTHROPIC_API_KEY nel file .env');
         }
 
-        return new Anthropic(key: (string) $key, model: (string) config('pec.ai.model'), max_tokens: 2048);
+        return new RecordingAnthropic(usageSource: 'neuron:ManualAssistantAgent', key: (string) $key, model: (string) config('pec.ai.model'), max_tokens: 2048);
     }
 
     protected function instructions(): string
