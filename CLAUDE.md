@@ -45,3 +45,7 @@ php artisan boost:install
 
 Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
 </laravel-boost-guidelines>
+
+## Lettura dei documenti: markitdown prima di Anthropic
+
+Per leggere il contenuto di un documento (Word, Excel, PowerPoint, OpenDocument, HTML, RTF, EPUB, e anche PDF quando serve solo il testo) usa `markitdown` (`/usr/local/bin/markitdown <file>`, stampa Markdown) invece di parsarlo a mano. Nel codice che manda documenti all'API Anthropic, i formati che l'API non legge in modo nativo si convertono prima con `Unico\Core\Documents\MarkitdownConverter` (unico-core) e si manda il testo; PDF e immagini restano in visione (firme, timbri e scansioni non si leggono dal solo testo). Binario e limiti: `unico-core.documents.markitdown.*` (`MARKITDOWN_BINARY`, `MARKITDOWN_TIMEOUT`, `MARKITDOWN_MAX_CHARS`).
