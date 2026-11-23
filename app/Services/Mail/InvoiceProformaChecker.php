@@ -5,7 +5,7 @@ namespace App\Services\Mail;
 use App\Models\IncomingEmail;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
-use Unico\Core\Ai\AnthropicClient;
+use Unico\Core\Documents\Contracts\DocumentReader;
 use Unico\Core\Models\Document;
 use Unico\Core\Models\DocumentType;
 
@@ -104,20 +104,6 @@ TXT;
         return $read;
     }
 
-    /** Word, Excel, OpenDocument...: l'API non li legge, si converte in Markdown con markitdown. @return array<string, mixed> */
-    private function markdownBlock(string $content, string $fileName, string $mime): array
-    {
-        $converter = \Unico\Core\Documents\MarkitdownConverter::make();
-        $name = $converter->supports($fileName) ? $fileName : \Unico\Core\Documents\MarkitdownConverter::nameForMime($mime);
-        $markdown = $name === null ? null : $converter->toMarkdown($content, $name);
-
-        if ($markdown === null) {
-            throw new RuntimeException("Formato non leggibile ({$mime}).");
-        }
-
-        return ['type' => 'text', 'text' => "Document content (converted to Markdown):\n\n".$markdown];
-    }
-
     /** @return array<string, mixed> */
     private function read(Document $document): array
     {
@@ -136,12 +122,10 @@ TXT;
         $mime = (string) $media->mime_type;
         $content = file_get_contents($media->getPath());
 
-        $block = match (true) {
-            $mime === 'application/pdf' => ['type' => 'document', 'source' => ['type' => 'base64', 'media_type' => 'application/pdf', 'data' => base64_encode($content)]],
-            in_array($mime, ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true) => ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => base64_encode($content)]],
-            str_contains($mime, 'xml') || str_ends_with(strtolower((string) $media->file_name), '.xml') => ['type' => 'text', 'text' => mb_substr(strip_tags($content), 0, 12000)],
-            default => $this->markdownBlock($content, (string) $media->file_name, $mime),
-        };
+        // XML (fattura elettronica): il testo è già nel file. Per gli altri formati si usa il testo già estratto dall'app (extracted_text, con OCR).
+        $known = str_contains($mime, 'xml') || str_ends_with(strtolower((string) $media->file_name), '.xml')
+            ? mb_substr(strip_tags($content), 0, 12000)
+            : ($media->getCustomProperty('extracted_text') ?: null);
 
         $number = ['type' => ['number', 'null']];
         $schema = [
@@ -164,19 +148,22 @@ TXT;
             'additionalProperties' => false,
         ];
 
-        $response = AnthropicClient::post($key, [
-            'model' => config('pec.ai.model'),
-            'max_tokens' => 900,
-            'system' => self::SYSTEM,
-            'messages' => [['role' => 'user', 'content' => [$block, ['type' => 'text', 'text' => 'Extract the data of this document.']]]],
-            'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema]],
-        ], 'pec:proforma-checker', 90);
+        // Lettura a gradini del core: cache per impronta, testo con il modello economico, pagine ridotte in visione e solo alla fine il modello principale.
+        $data = app(DocumentReader::class)->extract(
+            'pec:proforma-checker',
+            self::SYSTEM,
+            'Extract the data of this document.',
+            $schema,
+            $mime,
+            $content,
+            $known,
+            fn (?array $d): bool => is_array($d) && isset($d['document_type']) && ($d['total'] ?? $d['taxable'] ?? $d['payable'] ?? null) !== null,
+            'fattura',
+        );
 
-        if ($response->failed()) {
-            throw new RuntimeException('API Claude: HTTP '.$response->status().' '.mb_substr((string) $response->json('error.message'), 0, 160));
+        if ($data === null) {
+            throw new RuntimeException('Lettura AI non riuscita.');
         }
-
-        $data = json_decode((string) collect($response->json('content'))->firstWhere('type', 'text')['text'], true) ?: [];
 
         return [
             'tipo' => $data['document_type'] ?? 'altro',

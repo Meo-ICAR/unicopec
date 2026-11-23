@@ -100,7 +100,10 @@ class ProducerDocuments
         ]);
 
         // L'analisi parte dopo, una volta sola, con i candidati scelti qui.
-        AnalyzeUploadedDocument::suspendedWhile(fn () => $document->addMedia($media->getPath())->preservingOriginal()->usingFileName($media->file_name)->toMediaCollection(Document::COLLECTION));
+        // Il testo già estratto dall'allegato (con OCR) viaggia con il file: la lettura dei dati lo usa e non rimanda all'AI il PDF intero.
+        $extracted = array_filter(['extracted_text' => mb_substr((string) $media->getCustomProperty('extracted_text', ''), 0, 60000), 'extracted_method' => $media->getCustomProperty('extracted_method')]);
+
+        AnalyzeUploadedDocument::suspendedWhile(fn () => $document->addMedia($media->getPath())->preservingOriginal()->usingFileName($media->file_name)->withCustomProperties($extracted)->toMediaCollection(Document::COLLECTION));
 
         $document = $document->fresh();
         $fallback = $types->firstWhere('code', self::FALLBACK_CODE);
