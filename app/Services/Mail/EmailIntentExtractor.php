@@ -3,9 +3,8 @@
 namespace App\Services\Mail;
 
 use App\Models\IncomingEmail;
-use Illuminate\Support\Facades\Http;
-use RuntimeException;
-use Unico\Core\Ai\AnthropicClient;
+use Unico\Core\Ai\EmailText;
+use Unico\Core\Ai\StructuredText;
 
 /**
  * Capisce cosa chiede un'email, oltre all'argomento: sceglie una richiesta da un catalogo chiuso (config pec.intents) ed estrae i dati
@@ -29,15 +28,10 @@ TXT;
             return ['intent' => 'nessuna', 'confidence' => 1.0, 'summary' => 'Ricevuta o notifica automatica del gestore PEC: non inviata all\'AI.', 'entities' => [], 'flags' => []];
         }
 
-        $key = (string) config('pec.ai.key');
-
-        if ($key === '') {
-            throw new RuntimeException('ANTHROPIC_API_KEY non configurata.');
-        }
-
         $intents = (array) config('pec.intents');
         $list = collect($intents)->map(fn ($description, $code) => "- {$code}: {$description}")->implode("\n");
-        $body = mb_substr(trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags(preg_replace('#<(style|script)\b.*?</\1>#is', '', (string) ($email->body_text ?: $email->body_html)) ?? ''))) ?? ''), 0, (int) config('pec.ai.body_chars'));
+        // Solo il messaggio nuovo (senza le risposte citate più in basso), senza HTML, tagliato a pec.ai.body_chars.
+        $body = EmailText::prepare($email->body_text, $email->body_html, (int) config('pec.ai.body_chars', 4000));
 
         $schema = [
             'type' => 'object',
@@ -55,19 +49,14 @@ TXT;
             'additionalProperties' => false,
         ];
 
-        $response = AnthropicClient::post($key, [
-            'model' => config('pec.ai.model'),
-            'max_tokens' => 600,
-            'system' => self::SYSTEM."\n\nIntents:\n{$list}",
-            'messages' => [['role' => 'user', 'content' => "From: {$email->from_name} <{$email->from_email}>\nSubject: {$email->subject}\n\nBody:\n{$body}"]],
-            'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema]],
-        ], 'pec:intent-extractor', 60);
-
-        if ($response->failed()) {
-            throw new RuntimeException('API Claude: HTTP '.$response->status().' '.mb_substr((string) $response->json('error.message'), 0, 200));
-        }
-
-        $data = json_decode((string) collect($response->json('content'))->firstWhere('type', 'text')['text'], true) ?: [];
+        // Chiamata e costi in unico-core: modello economico, cache; il modello principale se la lettura è incerta e sempre per le rettifiche IBAN.
+        $data = StructuredText::run(
+            'pec:intent-extractor',
+            self::SYSTEM."\n\nIntents:\n{$list}",
+            "From: {$email->from_name} <{$email->from_email}>\nSubject: {$email->subject}\n\nBody:\n{$body}",
+            $schema,
+            fn (array $d): bool => (float) ($d['confidence'] ?? 0) < 0.7 || ($d['intent'] ?? '') === 'rettifica_iban',
+        );
         $intent = array_key_exists($data['intent'] ?? '', $intents) ? $data['intent'] : 'nessuna';
         $entities = array_filter(array_intersect_key($data, array_flip(['proforma', 'iban', 'beneficiary', 'amount', 'practice'])), fn ($v) => $v !== null && $v !== '');
 

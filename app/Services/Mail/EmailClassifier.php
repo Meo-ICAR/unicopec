@@ -4,9 +4,8 @@ namespace App\Services\Mail;
 
 use App\Enums\EmailCategory;
 use App\Models\IncomingEmail;
-use Illuminate\Support\Facades\Http;
-use RuntimeException;
-use Unico\Core\Ai\AnthropicClient;
+use Unico\Core\Ai\EmailText;
+use Unico\Core\Ai\StructuredText;
 
 /**
  * Classifica un'email: prima le regole certe (nessuna chiamata AI, nessun costo), poi l'API Claude con risposta JSON validata da uno schema.
@@ -56,17 +55,12 @@ TXT;
 
     private function byAi(IncomingEmail $email, ?EmailCategory $forced = null): Classification
     {
-        $key = (string) config('pec.ai.key');
-
-        if ($key === '') {
-            throw new RuntimeException('ANTHROPIC_API_KEY non configurata.');
-        }
-
         $categories = collect(EmailCategory::cases())
             ->reject(fn (EmailCategory $c) => $c === EmailCategory::ProviderNotification)
             ->map(fn (EmailCategory $c) => "- {$c->value}: {$c->description()}")->implode("\n");
 
-        $body = mb_substr(trim(preg_replace('/\s+/u', ' ', strip_tags((string) ($email->body_text ?: $email->body_html))) ?? ''), 0, (int) config('pec.ai.body_chars'));
+        // Corpo senza HTML e spazi in eccesso, tagliato a pec.ai.body_chars. I messaggi inoltrati non si tagliano: per classificarli servono.
+        $body = EmailText::prepare($email->body_text, $email->body_html, (int) config('pec.ai.body_chars'), stripQuoted: false);
         $attachments = $email->getMedia(IncomingEmail::ATTACHMENTS)->pluck('file_name')->implode(', ');
 
         $schema = [
@@ -81,22 +75,14 @@ TXT;
             'additionalProperties' => false,
         ];
 
-        $response = AnthropicClient::post($key, [
-            'model' => config('pec.ai.model'),
-            'max_tokens' => 600,
-            'system' => self::SYSTEM."\n\nCategories:\n{$categories}".($forced ? "\n\nThe category is already decided: \"{$forced->value}\". Still fill every field." : ''),
-            'messages' => [[
-                'role' => 'user',
-                'content' => "Company receiving it: {$email->company?->name}\nFrom: {$email->from_name} <{$email->from_email}>\nSubject: {$email->subject}\nAttachments: ".($attachments ?: 'none')."\n\nBody:\n{$body}",
-            ]],
-            'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema]],
-        ], 'pec:email-classifier', 60);
-
-        if ($response->failed()) {
-            throw new RuntimeException('API Claude: HTTP '.$response->status().' '.mb_substr((string) $response->json('error.message'), 0, 200));
-        }
-
-        $data = json_decode((string) collect($response->json('content'))->firstWhere('type', 'text')['text'], true);
+        // Chiamata e costi in unico-core: modello economico, cache dei testi già visti; il modello principale solo se la classificazione è incerta o "altro".
+        $data = StructuredText::run(
+            'pec:email-classifier',
+            self::SYSTEM."\n\nCategories:\n{$categories}".($forced ? "\n\nThe category is already decided: \"{$forced->value}\". Still fill every field." : ''),
+            "Company receiving it: {$email->company?->name}\nFrom: {$email->from_name} <{$email->from_email}>\nSubject: {$email->subject}\nAttachments: ".($attachments ?: 'none')."\n\nBody:\n{$body}",
+            $schema,
+            fn (array $d): bool => ! $forced && ((float) ($d['confidence'] ?? 0) < 0.6 || ($d['category'] ?? 'altro') === EmailCategory::Altro->value),
+        );
 
         return new Classification(
             EmailCategory::tryFrom($data['category'] ?? '') ?? EmailCategory::Altro,
