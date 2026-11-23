@@ -28,6 +28,10 @@ TXT;
             return ['intent' => 'nessuna', 'confidence' => 1.0, 'summary' => 'Ricevuta o notifica automatica del gestore PEC: non inviata all\'AI.', 'entities' => [], 'flags' => []];
         }
 
+        if (blank(config('pec.ai.key'))) {
+            throw new \RuntimeException('ANTHROPIC_API_KEY non configurata.');
+        }
+
         $intents = (array) config('pec.intents');
         $list = collect($intents)->map(fn ($description, $code) => "- {$code}: {$description}")->implode("\n");
         // Solo il messaggio nuovo (senza le risposte citate più in basso), senza HTML, tagliato a pec.ai.body_chars.

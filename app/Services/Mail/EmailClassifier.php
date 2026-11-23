@@ -55,6 +55,10 @@ TXT;
 
     private function byAi(IncomingEmail $email, ?EmailCategory $forced = null): Classification
     {
+        if (blank(config('pec.ai.key'))) {
+            throw new \RuntimeException('ANTHROPIC_API_KEY non configurata.');
+        }
+
         $categories = collect(EmailCategory::cases())
             ->reject(fn (EmailCategory $c) => $c === EmailCategory::ProviderNotification)
             ->map(fn (EmailCategory $c) => "- {$c->value}: {$c->description()}")->implode("\n");
