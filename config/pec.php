@@ -32,6 +32,7 @@ return [
         'rettifica_proforma' => 'Il mittente segnala un errore in un proforma e ne chiede la modifica (importi o pratiche mancanti, dati errati).',
         'chiarimenti_proforma' => 'Il mittente chiede informazioni su un proforma o su un pagamento (stato, importo, trattenute) senza chiedere modifiche.',
         'fattura_ricevuta' => 'Un fornitore o un agente invia una fattura o un documento contabile.',
+        'candidatura_rete' => 'Una persona si candida o propone di collaborare con la rete commerciale come agente o collaboratore di mediatore creditizio (invia CV, chiede di entrare in rete, risponde a una campagna di recruiting).',
         'nessuna' => 'Nessuna richiesta operativa: ringraziamenti, conferme, newsletter, risposte interne.',
     ],
 
