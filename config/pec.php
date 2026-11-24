@@ -11,6 +11,8 @@ return [
         // Se l'organigramma è quello di ripiego (simulazione) gli inoltri non vanno ai referenti veri ma a questo indirizzo di prova.
         // Vuoto = l'inoltro viene solo registrato come «simulato».
         'simulation_to' => env('PEC_FORWARD_SIMULATION_TO', ''),
+        // Casella (mail_accounts.id) da cui partono gli inoltri, es. pechub@races.it. Se è impostata e non può inviare, l'inoltro fallisce: mai un altro mittente.
+        'from_account_id' => env('PEC_FORWARD_FROM_ACCOUNT_ID'),
     ],
 
     // Fuso orario che decide l'anno del protocollo (la numerazione riparte a Capodanno italiano, non UTC).

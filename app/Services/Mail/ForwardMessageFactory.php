@@ -51,7 +51,7 @@ class ForwardMessageFactory
             '{link_presa_in_carico}' => (string) $takeUrl,
             '{nota}' => (string) $note,
             '{banner}' => (string) $banner,
-            '{testo}' => nl2br(e(trim((string) ($email->body_full ?: $email->body_text ?: strip_tags((string) $email->body_html))))),
+            '{testo}' => nl2br(e($email->forwardBody())),
         ];
 
         // Nel corpo HTML ogni valore è testo di terzi e si scrive con l'escape (tranne {testo}, già trattato); l'oggetto è testo semplice.
@@ -77,6 +77,19 @@ class ForwardMessageFactory
     /** Casella SMTP (non PEC: dalla PEC tornerebbero le ricevute del gestore) della società, in forma di unico-core: le credenziali restano cifrate e si leggono con la chiave dell'app. */
     private function account(IncomingEmail $email): ?CoreMailAccount
     {
+        if ($fixed = config('pec.forward.from_account_id')) {
+            $own = MailAccount::query()->where('is_active', true)->find($fixed);
+
+            if (! $own || ($own->auth_type ?? 'password') !== 'password' || blank($own->smtp_host) || blank($own->smtp_password)) {
+                throw new \RuntimeException('La casella mittente degli inoltri (#'.$fixed.($own ? ' '.$own->email_address : '').') non può inviare: serve SMTP con password, oppure l\'invio con OAuth2 non è ancora supportato.');
+            }
+
+            $account = new CoreMailAccount;
+            $account->setRawAttributes($own->getAttributes(), true);
+
+            return $account;
+        }
+
         if ($email->company_id === null) {
             return null;
         }

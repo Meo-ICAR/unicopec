@@ -61,6 +61,12 @@ class IncomingEmail extends Model implements HasMedia
     }
 
     /** @return array{label: string, color: string} */
+    /** Testo completo per l'inoltro (con la catena di risposte): body_full, altrimenti il corpo leggibile. */
+    public function forwardBody(): string
+    {
+        return filled(trim((string) $this->body_full)) ? trim((string) $this->body_full) : $this->readableBody();
+    }
+
     /** Corpo leggibile: il testo semplice, oppure (per le email solo HTML) il testo ricavato dall'HTML senza stili e script. */
     public function readableBody(): string
     {

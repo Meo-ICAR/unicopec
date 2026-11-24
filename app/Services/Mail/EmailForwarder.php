@@ -18,6 +18,11 @@ class EmailForwarder
     /** @return array{status: string, message: string} esito: ok | warning (simulato o già inoltrata) | error */
     public function forward(IncomingEmail $email, string $reason = 'Inoltro richiesto', bool $force = false): array
     {
+        // Invio email sospeso (UNICO_CORE_MAIL_DISABLED): non si invia e non si registra nulla, l'inoltro resta da fare.
+        if (config('unico-core.mail.sending_disabled')) {
+            return ['status' => 'warning', 'message' => 'Invio email sospeso: inoltro non eseguito.'];
+        }
+
         $employee = $email->related instanceof Employee ? $email->related : null;
 
         if (! $employee) {

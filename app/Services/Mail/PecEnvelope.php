@@ -62,7 +62,7 @@ class PecEnvelope
             'from_email' => $from->mail ?? null,
             'from_name' => ($from->personal ?? '') ?: null,
             'subject' => $this->decode((string) $source->getSubject()),
-            'text' => $this->utf8($source->getTextBody()),
+            'text' => self::plain($this->utf8($source->getTextBody())),
             'html' => $this->utf8($source->getHTMLBody()),
             'attachments' => array_values(array_filter(
                 $attachments,
@@ -102,7 +102,7 @@ class PecEnvelope
             }
 
             $header = 'Da: '.($original['from_email'] ?? '?')."\nOggetto: ".($original['subject'] ?? '');
-            $text = $original['text'] ?? trim(html_entity_decode(strip_tags((string) preg_replace('~<(style|script)\b.*?</\1>|<br\s*/?>|</p>~is', "\n", (string) $original['html']))));
+            $text = self::plain($original['text']) ?: trim(html_entity_decode(strip_tags((string) preg_replace('~<(style|script)\b.*?</\1>|<br\s*/?>|</p>~is', "\n", (string) $original['html']))));
 
             $data['text'] = trim(($data['text'] ?? '')."\n\n----- Messaggio inoltrato -----\n{$header}\n\n{$text}");
             $data['html'] = ($data['html'] ?? '').'<hr><p><strong>Messaggio inoltrato</strong><br>Da: '.e($original['from_email'] ?? '?').'<br>Oggetto: '.e($original['subject'] ?? '').'</p>'
@@ -139,6 +139,21 @@ class PecEnvelope
     }
 
     /** Il corpo del messaggio interno può non essere UTF-8 (es. ISO-8859-1): MySQL lo rifiuterebbe. */
+    /** Una parte «testo» che in realtà contiene HTML (o stili) diventa testo semplice, senza CSS né tag. */
+    public static function plain(?string $text): ?string
+    {
+        if ($text === null || ! preg_match('~</?(html|body|head|style|div|span|p|br|table|tr|td|a|b|i|font)\b~i', $text)) {
+            return $text;
+        }
+
+        $text = preg_replace('~<(style|script|head)\b.*?</\1>~is', '', $text) ?? $text;
+        $text = preg_replace('~<br\s*/?>|</(p|div|li|tr|h[1-6]|table)>~i', "\n", $text) ?? $text;
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace(['/[ \t\x{00A0}]+/u', '/ *\n */', '/\n{3,}/'], [' ', "\n", "\n\n"], $text) ?? $text;
+
+        return trim($text);
+    }
+
     private function utf8(?string $text): ?string
     {
         if ($text === null || $text === '') {

@@ -21,6 +21,7 @@
         <env name="APP_ENV" value="testing"/>
         <!-- La cache di configurazione di produzione non vale nei test: userebbe il database vero -->
         <env name="APP_CONFIG_CACHE" value="/tmp/unicopec-test-config.php"/>
+        <env name="UNICO_CORE_MAIL_DISABLED" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
