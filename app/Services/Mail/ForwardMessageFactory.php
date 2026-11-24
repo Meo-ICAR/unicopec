@@ -80,12 +80,12 @@ class ForwardMessageFactory
         if ($fixed = config('pec.forward.from_account_id')) {
             $own = MailAccount::query()->where('is_active', true)->find($fixed);
 
-            if (! $own || ($own->auth_type ?? 'password') !== 'password' || blank($own->smtp_host) || blank($own->smtp_password)) {
-                throw new \RuntimeException('La casella mittente degli inoltri (#'.$fixed.($own ? ' '.$own->email_address : '').') non può inviare: serve SMTP con password, oppure l\'invio con OAuth2 non è ancora supportato.');
-            }
-
             $account = new CoreMailAccount;
-            $account->setRawAttributes($own->getAttributes(), true);
+            $account->setRawAttributes($own?->getAttributes() ?? [], true);
+
+            if (! $own || ! ($account->canSendWithOAuth() || $account->hasSmtpConfigured())) {
+                throw new \RuntimeException('La casella mittente degli inoltri (#'.$fixed.($own ? ' '.$own->email_address : '').') non può inviare: serve SMTP con password oppure un collegamento Microsoft OAuth2 con il permesso SMTP.Send.');
+            }
 
             return $account;
         }

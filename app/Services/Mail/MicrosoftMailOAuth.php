@@ -13,8 +13,8 @@ use RuntimeException;
  */
 class MicrosoftMailOAuth
 {
-    /** IMAP in delega + refresh token. */
-    public const SCOPES = 'offline_access openid email https://outlook.office.com/IMAP.AccessAsUser.All';
+    /** IMAP e SMTP in delega + refresh token (SMTP.Send serve per inviare dalla casella, es. gli inoltri). */
+    public const SCOPES = 'offline_access openid email https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send';
 
     public static function redirectUri(): string
     {
@@ -43,7 +43,7 @@ class MicrosoftMailOAuth
     {
         return "https://login.microsoftonline.com/{$this->tenant()}/v2.0/adminconsent?".http_build_query([
             'client_id' => $this->clientId(),
-            'scope' => 'https://outlook.office.com/IMAP.AccessAsUser.All offline_access',
+            'scope' => 'https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access',
             'redirect_uri' => self::redirectUri(),
             'state' => 'admin-consent',
         ]);
