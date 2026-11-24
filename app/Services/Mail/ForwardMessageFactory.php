@@ -51,7 +51,7 @@ class ForwardMessageFactory
             '{link_presa_in_carico}' => (string) $takeUrl,
             '{nota}' => (string) $note,
             '{banner}' => (string) $banner,
-            '{testo}' => nl2br(e(trim((string) ($email->body_text ?: strip_tags((string) $email->body_html))))),
+            '{testo}' => nl2br(e(trim((string) ($email->body_full ?: $email->body_text ?: strip_tags((string) $email->body_html))))),
         ];
 
         // Nel corpo HTML ogni valore è testo di terzi e si scrive con l'escape (tranne {testo}, già trattato); l'oggetto è testo semplice.

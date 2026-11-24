@@ -6,6 +6,7 @@ use App\Jobs\ExtractAttachmentText;
 use App\Models\IncomingEmail;
 use App\Models\MailAccount;
 use App\Models\SenderBlacklist;
+use App\Services\Mail\ReplyTrimmer;
 use App\Services\Mail\IbanAlignment;
 use App\Services\Mail\ImapClientFactory;
 use App\Services\Mail\PecEnvelope;
@@ -129,7 +130,8 @@ class FetchMailCommand extends Command
                 'to' => $this->addresses($message->getTo()),
                 'cc' => $this->addresses($message->getCc()),
                 'subject' => mb_substr($envelopeData['subject'] ?: '(Senza oggetto)', 0, 255),
-                'body_text' => $envelopeData['text'],
+                'body_text' => $envelopeData['text'] !== null && $envelopeData['text'] !== '' ? ReplyTrimmer::latest($envelopeData['text']) : $envelopeData['text'],
+                'body_full' => $envelopeData['text'],
                 'body_html' => $envelopeData['html'],
                 'received_at' => $this->date($message),
                 'is_read' => false,

@@ -43,7 +43,7 @@ class ForwardedPec extends Mailable
             'note' => $this->note,
             'protocols' => $this->email->protocols()->pluck('identifier')->implode(', '),
             'category' => EmailCategory::tryFrom((string) $this->email->classification)?->getLabel(),
-            'bodyText' => trim((string) ($this->email->body_text ?: strip_tags((string) $this->email->body_html))),
+            'bodyText' => trim((string) ($this->email->body_full ?: $this->email->body_text ?: strip_tags((string) $this->email->body_html))),
             'attachmentsNote' => $media->isEmpty() ? 'nessuno' : ($tooBig
                 ? $media->count().' (troppo grandi per l\'inoltro, restano in UnicoPEC: '.$media->pluck('file_name')->implode(', ').')'
                 : $media->pluck('file_name')->implode(', ')),
