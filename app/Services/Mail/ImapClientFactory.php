@@ -55,7 +55,7 @@ class ImapClientFactory
             'client_secret' => $this->clientSecret(),
             'grant_type' => 'refresh_token',
             'refresh_token' => $account->refresh_token,
-            'scope' => MicrosoftMailOAuth::SCOPES,
+            // Senza scope Microsoft rinnova con i permessi già concessi: chiedendone uno non ancora approvato (es. SMTP.Send) il rinnovo fallisce con AADSTS65001.
         ]);
 
         if ($response->failed()) {
