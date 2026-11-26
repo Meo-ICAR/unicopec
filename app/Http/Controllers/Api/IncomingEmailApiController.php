@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\IncomingEmail;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class IncomingEmailApiController extends Controller
 {
@@ -30,8 +31,18 @@ class IncomingEmailApiController extends Controller
             'related_type' => $email->related_type,
             'related_id' => $email->related_id,
             'attachments' => $email->getMedia(IncomingEmail::ATTACHMENTS)->map(fn ($m) => [
-                'name' => $m->file_name, 'mime' => $m->mime_type, 'size' => $m->size,
+                'id' => $m->id, 'name' => $m->file_name, 'mime' => $m->mime_type, 'size' => $m->size,
             ])->values(),
         ]);
+    }
+
+    /** Contenuto di un allegato, per le app della suite che devono inoltrarlo (es. UnicoOAM negli audit): solo con la chiave del bridge. */
+    public function attachment(int $id, int $media): BinaryFileResponse
+    {
+        $file = IncomingEmail::findOrFail($id)->getMedia(IncomingEmail::ATTACHMENTS)->firstWhere('id', $media);
+
+        abort_if($file === null || ! is_file($file->getPath()), 404);
+
+        return response()->download($file->getPath(), $file->file_name, ['Content-Type' => $file->mime_type]);
     }
 }

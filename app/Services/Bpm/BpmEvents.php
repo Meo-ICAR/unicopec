@@ -69,7 +69,11 @@ class BpmEvents
                 // Per i modelli email di UnicoBPM, che leggono solo valori semplici.
                 'controlli_testo' => implode(', ', $intent['flags']),
                 'verifica_richiesta' => $intent['flags'] !== [],
-            ] + (isset($intent['confronto']) ? [
+            ] + (isset($entities['produttori_ids']) ? [
+                // Audit periodico: id dei produttori abbinati (per il comando in UnicoOAM) ed elenco leggibile per le email del processo.
+                'produttori_ids' => implode(',', $entities['produttori_ids']),
+                'produttori_elenco' => collect($entities['produttori_trovati'] ?? [])->pluck('nome')->implode(', '),
+            ] : []) + (isset($intent['confronto']) ? [
                 // Per le fatture: esito del confronto con il totale del proforma (letto dall'allegato con l'AI).
                 'confronto' => ['esito' => $intent['confronto']['esito'], 'proforma' => $intent['confronto']['proforma'], 'dettaglio' => $intent['confronto']['dettaglio']],
             ] : []),
@@ -110,6 +114,12 @@ class BpmEvents
     public static function dispatchIbanChanged(array $state, ?IncomingEmail $email = null): void
     {
         SendBpmEvent::dispatch(self::ibanChanged($state, $email), $email?->id);
+    }
+
+    /** `email.richiesta` per UnicoBPM; l'`event_id` è per email, quindi un rinvio non avvia due processi. @param array{intent: string, confidence: float, summary: string, entities: array<string, mixed>, flags: array<int, string>} $intent */
+    public static function dispatchRequest(IncomingEmail $email, array $intent): void
+    {
+        SendBpmEvent::dispatch(self::request($email, $intent), $email->id);
     }
 
     public static function dispatchReceived(IncomingEmail $email, ?Classification $classification = null): void

@@ -53,7 +53,7 @@ class SenderBlacklist extends Model
             return false;
         }
 
-        return $patterns->contains(fn (string $p) => str_contains($p, '*') ? fnmatch($p, $subject) : str_contains($subject, $p));
+        return $patterns->contains(fn (string $p) => str_contains($p, '*') ? fnmatch('*'.$p.'*', $subject) : str_contains($subject, $p));
     }
 
     /** @param Collection<int, string> $patterns da patternsFor() */

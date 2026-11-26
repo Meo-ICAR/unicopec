@@ -35,8 +35,13 @@ return [
         'chiarimenti_proforma' => 'Il mittente chiede informazioni su un proforma o su un pagamento (stato, importo, trattenute) senza chiedere modifiche.',
         'fattura_ricevuta' => 'Un fornitore o un agente invia una fattura o un documento contabile.',
         'candidatura_rete' => 'Una persona si candida o propone di collaborare con la rete commerciale come agente o collaboratore di mediatore creditizio (invia CV, chiede di entrare in rete, risponde a una campagna di recruiting).',
+        'audit_periodico' => 'Verifiche ispettive o audit periodici (es. semestrali) sulla rete: il legale, il compliance o un organismo di controllo trasmette il testo standard da inviare a una lista di collaboratori, con questionario di verifica ispettiva e/o checklist dei documenti da allegare e raccogliere. Anche un oggetto come "Verifiche ispettive 1/5 rete" o "audit semestrale".',
         'nessuna' => 'Nessuna richiesta operativa: ringraziamenti, conferme, newsletter, risposte interne.',
     ],
+
+    // Richieste (intents) che `mail:intent --send` comunica a UnicoBPM come evento email.richiesta. Le altre si leggono e si registrano, ma non partono:
+    // ogni intento si aggiunge qui solo quando in UnicoBPM c'è il processo che lo aspetta.
+    'bpm_intents' => ['audit_periodico'],
 
     'ai' => [
         'key' => env('ANTHROPIC_API_KEY'),

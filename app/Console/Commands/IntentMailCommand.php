@@ -16,7 +16,8 @@ class IntentMailCommand extends Command
         {--account= : Solo le email di questa casella}
         {--limit=20 : Massimo di email lette}
         {--payload : Mostra l\'evento email.richiesta che andrebbe a UnicoBPM}
-        {--save : Registra l\'esito nella cronologia dell\'email (nessun invio a UnicoBPM)}';
+        {--save : Registra l\'esito nella cronologia dell\'email}
+        {--send : Comunica a UnicoBPM l\'evento email.richiesta, ma solo per le richieste in pec.bpm_intents (es. audit_periodico)}';
 
     protected $description = 'Legge le email con l\'AI per capire cosa chiedono (es. rettifica IBAN) e prepara la richiesta per UnicoBPM';
 
@@ -25,7 +26,9 @@ class IntentMailCommand extends Command
         $emails = IncomingEmail::query()->with(['company', 'mailAccount'])
             ->when($this->argument('email'), fn ($q, $id) => $q->whereKey($id))
             ->when($this->option('account'), fn ($q, $id) => $q->where('mail_account_id', $id))
-            ->when(! $this->argument('email'), fn ($q) => $q->where(fn ($q) => $q->where('classification', '!=', 'provider_notification')->orWhereNull('classification')))
+            ->when(! $this->argument('email'), fn ($q) => $q->where(fn ($q) => $q->where('classification', '!=', 'provider_notification')->orWhereNull('classification'))
+                // Solo le email non ancora lette dall'AI: senza questo filtro si rileggevano sempre le più vecchie e le nuove non venivano mai raggiunte.
+                ->whereDoesntHave('events', fn ($e) => $e->where('kind', EmailEvent::INTENT)))
             ->orderBy('received_at')->limit((int) $this->option('limit'))->get();
 
         foreach ($emails as $email) {
@@ -58,6 +61,12 @@ class IntentMailCommand extends Command
 
             if ($this->option('payload')) {
                 $this->line(json_encode(BpmEvents::request($email, $result), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
+            // Solo le richieste elencate in pec.bpm_intents partono davvero verso UnicoBPM: le altre restano «preparate» (--payload) finché il loro processo non è pronto.
+            if ($this->option('send') && in_array($result['intent'], (array) config('pec.bpm_intents'), true)) {
+                BpmEvents::dispatchRequest($email, $result);
+                $this->info('     evento email.richiesta accodato per UnicoBPM');
             }
 
             if ($this->option('save')) {

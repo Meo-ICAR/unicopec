@@ -20,6 +20,7 @@ Route::middleware([VerifyBridgeKey::class, 'throttle:300,1'])->group(function ()
 
     // Dettaglio di un'email ricevuta (il `subject_ref` dell'evento `email.ricevuta`).
     Route::get('/incoming-emails/{id}', [IncomingEmailApiController::class, 'show'])->name('api.incoming-emails.show');
+    Route::get('/incoming-emails/{id}/attachments/{media}', [IncomingEmailApiController::class, 'attachment'])->whereNumber(['id', 'media'])->name('api.incoming-emails.attachment');
 
     // Per lo switcher «cambia app» di UnicoBPM: l'utente ha un account con accesso al pannello?
     Route::get('/users/lookup', [UserLookupApiController::class, 'show'])->name('api.users.lookup');
