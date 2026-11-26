@@ -29,16 +29,14 @@ class AttachmentsRelationManager extends RelationManager
             ->defaultSort('id')
             ->emptyStateHeading('Nessun allegato')
             ->columns([
-                TextColumn::make('file_name')->label('File')->searchable(),
-                TextColumn::make('mime_type')->label('Tipo'),
+                TextColumn::make('file_name')->label('File')->searchable()
+                    ->icon('heroicon-o-paper-clip')
+                    ->color('primary')
+                    ->tooltip('Clicca per scaricare')
+                    ->action(Action::make('scarica')->action(fn (Media $record) => response()->download($record->getPath(), $record->file_name))),
                 TextColumn::make('size')->label('Dimensione')->formatStateUsing(fn ($state) => number_format($state / 1024, 1, ',', '.').' KB'),
                 TextColumn::make('created_at')->label('Scaricato il')->dateTime('d/m/Y H:i'),
-            ])
-            ->recordActions([
-                Action::make('scarica')
-                    ->label('Scarica')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->action(fn (Media $record) => response()->download($record->getPath(), $record->file_name)),
+                TextColumn::make('mime_type')->label('Tipo'),
             ]);
     }
 }

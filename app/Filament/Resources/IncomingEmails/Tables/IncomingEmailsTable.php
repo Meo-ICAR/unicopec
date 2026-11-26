@@ -28,6 +28,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -67,6 +68,7 @@ class IncomingEmailsTable
                 IconColumn::make('is_read')->label('Letta')->boolean()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('received_at', 'desc')
+            ->groups(self::groups())
             ->filters([
                 Filter::make('oggi')->label('Ricevute oggi')->query(fn (Builder $query) => $query->whereDate('received_at', today())->where(fn ($q) => $q->whereNull('classification')->orWhere('classification', '!=', EmailCategory::ProviderNotification->value))),
                 Filter::make('ultimi_7_giorni')->label('Ultimi 7 giorni')->query(fn (Builder $query) => $query->where('received_at', '>=', now()->subDays(7))->where(fn ($q) => $q->whereNull('classification')->orWhere('classification', '!=', EmailCategory::ProviderNotification->value))),
@@ -102,6 +104,29 @@ class IncomingEmailsTable
                 self::takenAction(),
                 EditAction::make()->label('Apri'),
             ]);
+    }
+
+    /** Raggruppamenti scelti dal menu «Raggruppa»: ogni gruppo si comprime con un clic sull'intestazione per nascondere i dettagli. */
+    private static function groups(): array
+    {
+        $categoryLabel = fn (?string $state) => EmailCategory::tryFrom((string) $state)?->getLabel() ?? ($state ?: 'Da classificare');
+
+        return [
+            Group::make('from_email')->label('Mittente')->collapsible()
+                ->getTitleFromRecordUsing(fn (IncomingEmail $record) => $record->from_name && $record->from_name !== $record->from_email ? "{$record->from_name} <{$record->from_email}>" : $record->from_email),
+            Group::make('classification')->label('Classificazione')->collapsible()
+                ->getTitleFromRecordUsing(fn (IncomingEmail $record) => $categoryLabel($record->classification)),
+            Group::make('from_email')->id('mittente_classificazione')->label('Mittente e classificazione')->collapsible()
+                ->getKeyFromRecordUsing(fn (IncomingEmail $record) => $record->from_email.'|'.$record->classification)
+                ->getTitleFromRecordUsing(fn (IncomingEmail $record) => $record->from_email.' — '.$categoryLabel($record->classification))
+                ->groupQueryUsing(fn (Builder $query) => $query->groupBy('from_email', 'classification'))
+                ->orderQueryUsing(fn (Builder $query, string $direction) => $query->orderBy('from_email', $direction)->orderBy('classification', $direction))
+                ->scopeQueryByKeyUsing(function (Builder $query, ?string $key) {
+                    [$from, $classification] = array_pad(explode('|', (string) $key, 2), 2, '');
+
+                    return $query->where('from_email', $from)->when(filled($classification), fn ($q) => $q->where('classification', $classification), fn ($q) => $q->whereNull('classification'));
+                }),
+        ];
     }
 
     public static function classifyAction(): Action

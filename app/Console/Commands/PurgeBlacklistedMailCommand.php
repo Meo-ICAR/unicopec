@@ -11,7 +11,7 @@ class PurgeBlacklistedMailCommand extends Command
     protected $signature = 'mail:purge-blacklisted
         {--dry-run : Mostra le email senza eliminarle}';
 
-    protected $description = 'Elimina (soft delete) le email già importate di mittenti in lista nera';
+    protected $description = 'Elimina (soft delete) le email già importate di mittenti o con oggetti in lista nera';
 
     public function handle(): int
     {
@@ -19,9 +19,10 @@ class PurgeBlacklistedMailCommand extends Command
 
         foreach (IncomingEmail::query()->select('company_id')->distinct()->pluck('company_id') as $companyId) {
             $patterns = SenderBlacklist::patternsFor($companyId);
+            $subjects = SenderBlacklist::patternsFor($companyId, SenderBlacklist::SUBJECT);
 
-            IncomingEmail::query()->where('company_id', $companyId)->each(function (IncomingEmail $email) use ($patterns, &$total) {
-                if (! SenderBlacklist::matches($patterns, $email->from_email)) {
+            IncomingEmail::query()->where('company_id', $companyId)->each(function (IncomingEmail $email) use ($patterns, $subjects, &$total) {
+                if (! SenderBlacklist::matches($patterns, $email->from_email) && ! SenderBlacklist::matchesSubject($subjects, $email->subject)) {
                     return;
                 }
 

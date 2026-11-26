@@ -72,6 +72,7 @@ class FetchMailCommand extends Command
 
         $imported = $duplicates = $excluded = 0;
         $blacklist = SenderBlacklist::patternsFor($account->company_id);
+        $subjectBlacklist = SenderBlacklist::patternsFor($account->company_id, SenderBlacklist::SUBJECT);
         $limit = (int) $this->option('limit');
 
         foreach ($messages as $message) {
@@ -91,8 +92,8 @@ class FetchMailCommand extends Command
             $envelopeData = $envelope->open($message);
             $busta = $message->getFrom()[0] ?? null;
 
-            // Mittenti in lista nera (newsletter, social...): non si importano. In una PEC si guarda anche il mittente vero, non solo il gestore.
-            if (SenderBlacklist::matches($blacklist, $envelopeData['from_email'] ?? null) || SenderBlacklist::matches($blacklist, $busta->mail ?? null)) {
+            // Mittenti e oggetti in lista nera (newsletter, social, codici di accesso...): non si importano. In una PEC si guarda anche il mittente vero, non solo il gestore.
+            if (SenderBlacklist::matches($blacklist, $envelopeData['from_email'] ?? null) || SenderBlacklist::matches($blacklist, $busta->mail ?? null) || SenderBlacklist::matchesSubject($subjectBlacklist, $envelopeData['subject'] ?? null)) {
                 $excluded++;
 
                 continue;
