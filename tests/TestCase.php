@@ -11,6 +11,9 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Il mittente fisso degli inoltri viene dal .env (casella vera): i test non lo usano.
+        config(['pec.forward.from_account_id' => null]);
+
         // I test non devono mai toccare il database vero: con la cache di configurazione attiva si userebbe quello di produzione.
         foreach (array_unique([config('database.default'), config('unico-core.connection')]) as $connection) {
             $database = (string) config("database.connections.{$connection}.database");
